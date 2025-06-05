@@ -140,10 +140,14 @@ Ensure you have the following installed:
 
 This project is licensed under the **MIT License**.
 
-## Vibe Coding Imaginations
-
 ---
 
 ### 📩 Need Help?
 
 For issues or suggestions, create a GitHub issue or contact me at [anis42390@gmail.com].
+
+
+<p align="center">
+  🌈✨ <strong>Vibe • Coding • Imaginations</strong> ✨🌈  
+</p>
+
