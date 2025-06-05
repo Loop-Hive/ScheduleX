@@ -140,6 +140,8 @@ Ensure you have the following installed:
 
 This project is licensed under the **MIT License**.
 
+## Vibe Coding Imaginations
+
 ---
 
 ### 📩 Need Help?
