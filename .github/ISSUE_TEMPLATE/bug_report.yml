@@ -1,0 +1,143 @@
+name: 🐛 Bug Report
+description: Report a bug or issue with the Attendance & Time Table App
+title: '[BUG] '
+labels: ['bug', 'active']
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug! Please provide as much detail as possible to help us fix it quickly.
+
+        🔍 **Before submitting**: 
+        - Search existing issues to avoid duplicates
+        - Make sure you're using the latest version
+
+  - type: textarea
+    id: bug-description
+    attributes:
+      label: 🐛 Bug Description
+      description: A clear and concise description of what the bug is
+      placeholder: 'The app crashes when...'
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: 🔄 Steps to Reproduce
+      description: Step-by-step instructions to reproduce the bug
+      placeholder: |
+        1. Go to '...'
+        2. Click on '...'
+        3. Scroll down to '...'
+        4. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: ✅ Expected Behavior
+      description: What should happen instead?
+      placeholder: 'The app should...'
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual-behavior
+    attributes:
+      label: ❌ Actual Behavior
+      description: What actually happens?
+      placeholder: 'Instead, the app...'
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: 🚨 Severity Level
+      description: How severe is this bug?
+      options:
+        - Critical - App crashes or data loss
+        - High - Major functionality broken
+        - Medium - Minor functionality issue
+        - Low - Cosmetic issue
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: 📱 Platform
+      description: Which platform(s) are affected?
+      multiple: true
+      options:
+        - Android
+        - iOS
+        - Both
+    validations:
+      required: true
+
+  - type: input
+    id: app-version
+    attributes:
+      label: 📦 App Version
+      description: What version of the app are you using?
+      placeholder: 'v1.0.4'
+    validations:
+      required: true
+
+  - type: textarea
+    id: device-info
+    attributes:
+      label: 📱 Device Information
+      description: Please provide device details
+      placeholder: |
+        - Device: [e.g. Samsung Galaxy S21, iPhone 12]
+        - OS Version: [e.g. Android 11, iOS 15.0]
+        - React Native Version: [if known]
+    validations:
+      required: true
+
+  - type: textarea
+    id: error-logs
+    attributes:
+      label: 📄 Error Logs
+      description: Please provide any error messages or logs
+      placeholder: 'Paste error logs here...'
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: 📸 Screenshots/Videos
+      description: Add screenshots or videos to help explain the problem
+      placeholder: 'Drag and drop screenshots here or provide links...'
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: 📝 Additional Context
+      description: Add any other context about the problem
+      placeholder: 'Any other relevant information...'
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: ✅ Checklist
+      description: Please confirm the following
+      options:
+        - label: I have searched existing issues to ensure this is not a duplicate
+          required: true
+        - label: I have provided all relevant information above
+          required: true
+        - label: I am using the latest version of the app
+          required: true
