@@ -29,6 +29,12 @@ yarn install
 
 ### 3. Run the App
 
+- **Start Metro Bundler:**
+
+```sh
+npm start
+```
+
 - **For Android:**
 
 ```sh
@@ -47,59 +53,20 @@ npx react-native run-ios
 npx expo start
 ```
 
-## Firebase Setup Guide
-
-### Step 1: Create a Firebase Project
-
-1. Go to [Firebase Console](https://console.firebase.google.com/).
-2. Click **"Add project"**, enter a project name, and follow the setup steps.
-3. Once created, go to **Project Settings** and note down:
-   - Project Number
-   - Project ID
-   - Storage Bucket
-
-### Step 2: Register Your App
-
-1. In **Firebase Console**, go to **Project Settings > General**.
-2. Under **Your apps**, click **Add App** and select **Android**.
-3. Enter your **package name** (e.g., `com.yourappname`).
-4. Follow the steps and download the `google-services.json` file.
-
-### Step 3: Configure API Keys and OAuth Clients
-
-1. In **Firebase Console**, go to **Project Settings > Service Accounts**.
-2. Set up authentication via **OAuth 2.0**.
-3. Obtain API keys and OAuth client IDs.
-4. Replace placeholders in `google-services.json` with actual values.
-
-### Step 4: Add `google-services.json` to Your Project
-
-1. Place `google-services.json` inside your React Native project's `android/app/` directory.
-2. Open `android/build.gradle` and add:
-   ```gradle
-   dependencies {
-       classpath("com.google.gms:google-services:4.3.10") // Make sure it's the latest version
-   }
-   ```
-
-## Troubleshooting
-
-If you encounter any issues during setup:
-
-1. Make sure all prerequisites are properly installed
-2. Clear npm cache: `npm cache clean --force`
-3. Delete `node_modules` and reinstall: `rm -rf node_modules && npm install`
-4. For Android issues, clean the build: `cd android && ./gradlew clean`
-5. For iOS issues, clean the build folder in Xcode
-
 ## Environment Variables
 
-Make sure to configure any required environment variables as specified in the project documentation.
+Create a `.env` file in the root directory and add the following environment variable:
 
-## Need Help?
+```env
+GOOGLE_GEMINI_API_KEY=your_gemini_api_key_here
+```
 
-If you're still facing issues, please:
+### Getting Your Google Gemini API Key:
 
-1. Check existing [GitHub Issues](https://github.com/anisharma07/React-native-attendance-app/issues)
-2. Create a new issue with detailed information about your problem
-3. Contact the maintainer at [anis42390@gmail.com]
+1. Visit [Google AI Studio](https://makersuite.google.com/app/apikey)
+2. Sign in with your Google account
+3. Create a new API key
+4. Copy the generated API key
+5. Replace `your_gemini_api_key_here` in your `.env` file
+
+**Note:** Keep your API key secure and never commit it to version control. The `.env` file should be added to your `.gitignore`.
