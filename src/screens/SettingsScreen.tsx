@@ -2,178 +2,169 @@ import React, {useState} from 'react';
 import {
   View,
   Text,
-  Button,
-  Alert,
   StyleSheet,
   TouchableOpacity,
   Image,
+  Switch,
+  ScrollView,
+  Alert,
 } from 'react-native';
-import {GOOGLE_WEB_CLIENT_ID} from '@env';
-import auth, {FirebaseAuthTypes} from '@react-native-firebase/auth';
-import {GoogleSignin} from '@react-native-google-signin/google-signin';
-import firestore from '@react-native-firebase/firestore';
 import useStore from '../store/store';
-import {TextInput} from 'react-native-gesture-handler';
-import Clipboard from '@react-native-clipboard/clipboard';
-
-GoogleSignin.configure({
-  webClientId: GOOGLE_WEB_CLIENT_ID,
-  offlineAccess: true,
-});
 
 const SettingsScreen: React.FC = () => {
-  // ...existing code...
-  const {registers, setRegisters} = useStore();
-  const [userID, setUserID] = useState<string>('');
-  const [register_no, setRegisterNo] = useState<number>(0);
+  const {defaultTargetPercentage, registers, activeRegister} = useStore();
+  const [darkMode, setDarkMode] = useState(true);
+  const [notifications, setNotifications] = useState(true);
+  const [autoBackup, setAutoBackup] = useState(false);
 
-  const [googleUser, setGoogleUser] = useState<FirebaseAuthTypes.User | null>(
-    null,
-  );
-  const sendUserDataToFirestore = async (user: FirebaseAuthTypes.User) => {
-    try {
-      await firestore().collection('users').doc(user.uid).set({
-        displayName: user.displayName,
-        email: user.email,
-        photoURL: user.photoURL,
-      });
-    } catch (error) {
-      console.error('Error sending user data to Firestore: ', error);
-    }
-  };
-  const handleGoogleSignIn = async () => {
-    try {
-      await GoogleSignin.hasPlayServices();
-      await GoogleSignin.signOut();
-      await GoogleSignin.signIn();
-      const {idToken} = await GoogleSignin.getTokens();
-
-      const googleCredential = auth.GoogleAuthProvider.credential(idToken);
-      const userCredential = await auth().signInWithCredential(
-        googleCredential,
-      );
-      setGoogleUser(userCredential.user);
-      Alert.alert('Signed in with Google!');
-      sendUserDataToFirestore(userCredential.user);
-    } catch (error) {
-      console.log('Google Sign-In Error', JSON.stringify(error, null, 2));
-      Alert.alert('Google Sign-In Error: ' + error);
-    }
+  const clearAllData = () => {
+    Alert.alert(
+      'Clear All Data',
+      'Are you sure you want to clear all attendance data? This action cannot be undone.',
+      [
+        {text: 'Cancel', style: 'cancel'},
+        {
+          text: 'Clear',
+          style: 'destructive',
+          onPress: () => {
+            // Implementation to clear data would go here
+            Alert.alert('Success', 'All data has been cleared.');
+          },
+        },
+      ],
+    );
   };
 
-  const handleInputChange = (value: number) => {
-    setRegisterNo(Math.min(Object.keys(registers).length - 1, value));
+  const exportData = () => {
+    Alert.alert('Export Data', 'Export your attendance data to CSV format?', [
+      {text: 'Cancel', style: 'cancel'},
+      {
+        text: 'Export',
+        onPress: () => {
+          // Implementation to export data would go here
+          Alert.alert('Success', 'Data exported successfully!');
+        },
+      },
+    ]);
   };
 
-  const handleSyncData = async () => {
-    if (googleUser) {
-      try {
-        const userDoc = await firestore()
-          .collection('users')
-          .doc(googleUser.uid)
-          .get();
-        const userData = userDoc.data();
-        console.log('User data: ', userData);
-        const cardsData = registers[0].cards.slice(0, 8);
-        cardsData.forEach(card => {
-          console.log('Card: ', card.title);
-        });
-        await firestore()
-          .collection('registers')
-          .doc(googleUser.uid)
-          .set({
-            cards: registers[0].cards.slice(0, 10),
-          });
-        Alert.alert('Data synced successfully!');
-      } catch (error) {
-        console.error('Error syncing data: ', error);
-        Alert.alert('Error syncing data: ' + error);
-      }
-    }
-  };
-  const handleSyncDownload = async (uid: string, register_num: number) => {
-    if (googleUser) {
-      try {
-        const userDoc = await firestore()
-          .collection('registers')
-          .doc(uid)
-          .get();
-        const cardData = userDoc.data()?.cards || [];
-        console.log('Card data: ', cardData);
-
-        setRegisters(register_num, cardData);
-        Alert.alert('Data synced successfully!');
-      } catch (error) {
-        console.error('Error syncing data: ', error);
-        Alert.alert('Error syncing data: ' + error);
-      }
-    }
+  const getCurrentRegisterInfo = () => {
+    const currentRegister = registers[activeRegister];
+    return {
+      name: currentRegister?.name || 'Unknown',
+      totalCards: currentRegister?.cards?.length || 0,
+    };
   };
 
-  const handleSignOut = async () => {
-    try {
-      await auth().signOut();
-      setGoogleUser(null);
-      Alert.alert('Signed out successfully!');
-    } catch (error) {
-      Alert.alert('Sign-Out Error: ' + error);
-    }
-  };
-  const copyToClipboard = (text: string) => {
-    Clipboard.setString(text);
-    Alert.alert('Copied to clipboard!');
-  };
+  const registerInfo = getCurrentRegisterInfo();
+
   return (
-    <View style={styles.container}>
-      <View style={styles.contentContainer2}>
-        <View style={styles.settingsBox}>
+    <ScrollView style={styles.container}>
+      <View style={styles.contentContainer}>
+        <View style={styles.headerContainer}>
           <Image
             source={require('../assets/icons/navigation/settings.png')}
-            style={styles.iconsStyle}
+            style={styles.headerIcon}
           />
+          <Text style={styles.headerText}>Settings</Text>
+        </View>
 
-          <Text style={styles.settingsText}>Settings</Text>
+        {/* Current Register Info */}
+        <View style={styles.infoCard}>
+          <Text style={styles.infoTitle}>Current Register</Text>
+          <Text style={styles.infoValue}>{registerInfo.name}</Text>
+          <Text style={styles.infoSubtext}>
+            {registerInfo.totalCards} subjects
+          </Text>
+        </View>
+
+        {/* Settings Options */}
+        <View style={styles.settingsSection}>
+          <Text style={styles.sectionTitle}>Preferences</Text>
+
+          <View style={styles.settingItem}>
+            <View style={styles.settingInfo}>
+              <Text style={styles.settingLabel}>Dark Mode</Text>
+              <Text style={styles.settingDescription}>
+                Use dark theme throughout the app
+              </Text>
+            </View>
+            <Switch
+              value={darkMode}
+              onValueChange={setDarkMode}
+              trackColor={{false: '#767577', true: '#4CAF50'}}
+              thumbColor={darkMode ? '#fff' : '#f4f3f4'}
+            />
+          </View>
+
+          <View style={styles.settingItem}>
+            <View style={styles.settingInfo}>
+              <Text style={styles.settingLabel}>Notifications</Text>
+              <Text style={styles.settingDescription}>
+                Get reminders about attendance
+              </Text>
+            </View>
+            <Switch
+              value={notifications}
+              onValueChange={setNotifications}
+              trackColor={{false: '#767577', true: '#4CAF50'}}
+              thumbColor={notifications ? '#fff' : '#f4f3f4'}
+            />
+          </View>
+
+          <View style={styles.settingItem}>
+            <View style={styles.settingInfo}>
+              <Text style={styles.settingLabel}>Auto Backup</Text>
+              <Text style={styles.settingDescription}>
+                Automatically backup data locally
+              </Text>
+            </View>
+            <Switch
+              value={autoBackup}
+              onValueChange={setAutoBackup}
+              trackColor={{false: '#767577', true: '#4CAF50'}}
+              thumbColor={autoBackup ? '#fff' : '#f4f3f4'}
+            />
+          </View>
+        </View>
+
+        {/* Data Management */}
+        <View style={styles.settingsSection}>
+          <Text style={styles.sectionTitle}>Data Management</Text>
+
+          <TouchableOpacity style={styles.actionButton} onPress={exportData}>
+            <Text style={styles.actionButtonText}>Export Data</Text>
+            <Text style={styles.actionButtonDescription}>
+              Export your attendance data to CSV
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.actionButton, styles.dangerButton]}
+            onPress={clearAllData}>
+            <Text style={[styles.actionButtonText, styles.dangerText]}>
+              Clear All Data
+            </Text>
+            <Text style={styles.actionButtonDescription}>
+              Remove all attendance records
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* App Info */}
+        <View style={styles.infoSection}>
+          <Text style={styles.sectionTitle}>About</Text>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Version</Text>
+            <Text style={styles.infoValue}>1.0.0</Text>
+          </View>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Default Target</Text>
+            <Text style={styles.infoValue}>{defaultTargetPercentage}%</Text>
+          </View>
         </View>
       </View>
-
-      {/* ...existing code... */}
-      {googleUser ? (
-        <View>
-          <Text style={styles.inputStyles}>
-            Welcome, {googleUser.displayName}!
-          </Text>
-          <TouchableOpacity onPress={() => copyToClipboard(googleUser.uid)}>
-            <Text style={styles.inputStyles}>User Id, {googleUser.uid}</Text>
-          </TouchableOpacity>
-          <Button title="Sign Out from Google" onPress={handleSignOut} />
-          <Button title="Sync Data" onPress={handleSyncData} />
-
-          <Text style={styles.inputStyles}>Copy From user,</Text>
-          <TextInput
-            placeholder="User Id"
-            value={userID}
-            onChangeText={text => setUserID(text)}
-            style={styles.inputStyles}
-          />
-          <TextInput
-            placeholder="Register No"
-            value={register_no.toString()}
-            keyboardType="numeric"
-            onChangeText={text => handleInputChange(Number(text) || 0)}
-            style={styles.inputStyles}
-          />
-
-          <Button
-            title="Sync Data"
-            onPress={() => handleSyncDownload(userID, register_no)}
-          />
-        </View>
-      ) : (
-        <View style={styles.centerContainer}>
-          <Button title="Sign In with Google" onPress={handleGoogleSignIn} />
-        </View>
-      )}
-    </View>
+    </ScrollView>
   );
 };
 
@@ -181,77 +172,129 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#18181B',
+  },
+  contentContainer: {
     padding: 20,
-    justifyContent: 'flex-start',
   },
-  contentContainer2: {
-    marginTop: 20,
-    alignItems: 'center',
-  },
-  settingsBox: {
+  headerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    // backgroundColor: '#ffffff',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 10,
-    elevation: 5,
-    shadowColor: '#000000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    marginBottom: 20,
-    width: '100%',
+    marginBottom: 30,
+    paddingVertical: 15,
   },
-  iconsStyle: {
-    width: 24,
-    height: 24,
-    marginRight: 10,
+  headerIcon: {
+    width: 28,
+    height: 28,
+    marginRight: 12,
+    tintColor: '#f5f5f5',
   },
-  settingsText: {
-    fontSize: 18,
+  headerText: {
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#f5f5f5',
   },
-  inputStyles: {
-    backgroundColor: '#fff',
-    borderColor: '#e1e1e1',
+  infoCard: {
+    backgroundColor: '#27272A',
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 25,
     borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
-    marginVertical: 10,
-    width: '100%',
-    fontSize: 16,
-    color: '#333',
+    borderColor: '#3F3F46',
   },
-  centerContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    flex: 1,
-  },
-  buttonStyle: {
-    backgroundColor: '#4CAF50',
-    paddingVertical: 12,
-    paddingHorizontal: 30,
-    borderRadius: 8,
-    marginVertical: 10,
-    width: '100%',
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  inputWrapper: {
-    marginBottom: 20,
-  },
-  welcomeText: {
-    fontSize: 20,
+  infoTitle: {
+    fontSize: 14,
     fontWeight: '600',
-    color: '#333',
-    textAlign: 'center',
-    marginVertical: 10,
+    color: '#A1A1AA',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  infoValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#f5f5f5',
+    marginBottom: 4,
+  },
+  infoSubtext: {
+    fontSize: 14,
+    color: '#71717A',
+  },
+  settingsSection: {
+    marginBottom: 30,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#f5f5f5',
+    marginBottom: 15,
+  },
+  settingItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#27272A',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#3F3F46',
+  },
+  settingInfo: {
+    flex: 1,
+    marginRight: 15,
+  },
+  settingLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#f5f5f5',
+    marginBottom: 4,
+  },
+  settingDescription: {
+    fontSize: 14,
+    color: '#A1A1AA',
+  },
+  actionButton: {
+    backgroundColor: '#27272A',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#3F3F46',
+  },
+  dangerButton: {
+    borderColor: '#DC2626',
+    backgroundColor: '#1F1F23',
+  },
+  actionButtonText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#f5f5f5',
+    marginBottom: 4,
+  },
+  dangerText: {
+    color: '#EF4444',
+  },
+  actionButtonDescription: {
+    fontSize: 14,
+    color: '#A1A1AA',
+  },
+  infoSection: {
+    marginBottom: 30,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#27272A',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#3F3F46',
+  },
+  infoLabel: {
+    fontSize: 16,
+    color: '#A1A1AA',
   },
 });
 

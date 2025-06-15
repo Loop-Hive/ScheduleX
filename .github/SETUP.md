@@ -22,8 +22,6 @@ cd Attendance-AI
 ### 2. Install Dependencies
 
 ```sh
-npm install
-# or
 yarn install
 ```
 
@@ -32,7 +30,7 @@ yarn install
 - **Start Metro Bundler:**
 
 ```sh
-npm start
+yarn start
 ```
 
 - **For Android:**
