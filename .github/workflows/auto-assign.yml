@@ -30,7 +30,8 @@ jobs:
 
             // Check if commenter is the issue author
             if (commenter === issueAuthor) {
-              return true;
+              core.setOutput('result', 'true');
+              return;
             }
 
             // Check if commenter is a collaborator
@@ -40,9 +41,9 @@ jobs:
                 repo: context.repo.repo,
                 username: commenter
               });
-              return true;
+              core.setOutput('result', 'true');
             } catch (error) {
-              return false;
+              core.setOutput('result', 'false');
             }
 
       - name: Assign issue to commenter
