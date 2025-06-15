@@ -1,0 +1,28 @@
+name: 🔍 Blank Issue
+description: Create a blank issue for anything not covered by other templates
+title: '[Blank]: '
+labels: []
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to create an issue! Please provide as much detail as possible.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Please describe your issue or request in detail
+      placeholder: Tell us what you want to discuss or report...
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Add any other context, screenshots, or information that might be helpful
+      placeholder: Any additional information...
+    validations:
+      required: false
