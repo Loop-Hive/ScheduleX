@@ -1,8 +1,5 @@
-blank_issues_enabled: false
+blank_issues_enabled: true
 contact_links:
-  - name: 💬 General Discussion
-    url: https://github.com/anisharma07/Attendance-AI/discussions
-    about: For general questions, ideas, and community discussions
   - name: 📧 Contact Maintainer
     url: mailto:anis42390@gmail.com
     about: For private inquiries or security issues
