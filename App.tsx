@@ -1,7 +1,7 @@
 import React, {useEffect} from 'react';
-import 'react-native-reanimated';
+// import 'react-native-reanimated';
 
-import {SafeAreaView, StatusBar, StyleSheet} from 'react-native';
+import {SafeAreaView, StatusBar, StyleSheet, View} from 'react-native';
 import Toast from 'react-native-toast-message';
 import MainApp from './src/main';
 import SplashScreen from 'react-native-splash-screen';
@@ -17,11 +17,13 @@ function App(): React.JSX.Element {
 
   return (
     <GestureHandlerRootView style={styles.gesture}>
-      <SafeAreaView style={[styles.container]}>
+      <View style={styles.container}>
         <StatusBar barStyle={'light-content'} backgroundColor="#18181B" />
-        <MainApp />
-        <Toast />
-      </SafeAreaView>
+        <SafeAreaView style={styles.safeArea}>
+          <MainApp />
+          <Toast />
+        </SafeAreaView>
+      </View>
     </GestureHandlerRootView>
   );
 }
@@ -30,6 +32,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#18181B',
+  },
+  safeArea: {
+    flex: 1,
   },
   gesture: {
     flex: 1,
