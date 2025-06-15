@@ -6,7 +6,7 @@ on:
 
 jobs:
   assign_issue:
-    if: contains(github.event.comment.body, '/assign')
+    if: contains(github.event.comment.body, '/assign') || contains(github.event.comment.body, '/unassign')
     runs-on: ubuntu-latest
 
     permissions:
@@ -14,100 +14,136 @@ jobs:
       contents: read
 
     steps:
-      - name: Check if comment is from issue author or collaborator
-        id: check_permissions
+      - name: Handle assign/unassign commands
         uses: actions/github-script@v7
         with:
           script: |
+            const commenter = context.payload.comment.user.login;
+            const commentBody = context.payload.comment.body.toLowerCase().trim();
+
+            // Get current issue details
             const { data: issue } = await github.rest.issues.get({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number
             });
 
-            const commenter = context.payload.comment.user.login;
-            const issueAuthor = issue.user.login;
+            // Handle /unassign command
+            if (commentBody.includes('/unassign')) {
+              // Check if the commenter is assigned to this issue
+              const isAssigned = issue.assignees.some(assignee => assignee.login === commenter);
+              
+              if (!isAssigned) {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  body: `❌ You are not assigned to this issue, @${commenter}.\n\nCurrently assigned to: ${issue.assignees.length > 0 ? issue.assignees.map(a => `@${a.login}`).join(', ') : 'No one'}`
+                });
+                return;
+              }
 
-            // Check if commenter is the issue author
-            if (commenter === issueAuthor) {
-              core.setOutput('result', 'true');
-              return;
-            }
-
-            // Check if commenter is a collaborator
-            try {
-              await github.rest.repos.checkCollaborator({
+              // Unassign the user
+              await github.rest.issues.removeAssignees({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                username: commenter
+                issue_number: context.issue.number,
+                assignees: [commenter]
               });
-              core.setOutput('result', 'true');
-            } catch (error) {
-              core.setOutput('result', 'false');
-            }
 
-      - name: Assign issue to commenter
-        if: steps.check_permissions.outputs.result == 'true'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const commenter = context.payload.comment.user.login;
+              // Remove "in-progress" label if no one is assigned
+              const remainingAssignees = issue.assignees.filter(a => a.login !== commenter);
+              if (remainingAssignees.length === 0) {
+                try {
+                  await github.rest.issues.removeLabel({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: context.issue.number,
+                    name: 'in-progress'
+                  });
+                  
+                  // Add back the "ready to be taken" label
+                  await github.rest.issues.addLabels({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: context.issue.number,
+                    labels: ['ready to be taken']
+                  });
+                } catch (error) {
+                  console.log('Label operations failed, continuing...');
+                }
+              }
 
-            // Check if issue is already assigned
-            const { data: issue } = await github.rest.issues.get({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number
-            });
-
-            if (issue.assignees.length > 0) {
-              // Issue is already assigned
-              const assignees = issue.assignees.map(a => a.login).join(', ');
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: context.issue.number,
-                body: `❌ This issue is already assigned to: ${assignees}\n\nIf you'd like to work on this issue, please ask the current assignee(s) or a maintainer to unassign it first.`
+                body: `✅ @${commenter} has been unassigned from this issue.\n\nThis issue is now available for others to take! 🎯`
               });
               return;
             }
 
-            // Assign the issue
-            await github.rest.issues.addAssignees({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              assignees: [commenter]
-            });
+            // Handle /assign command
+            if (commentBody.includes('/assign')) {
+              // Check if issue is already assigned
+              if (issue.assignees.length > 0) {
+                const isAlreadyAssigned = issue.assignees.some(assignee => assignee.login === commenter);
+                
+                if (isAlreadyAssigned) {
+                  await github.rest.issues.createComment({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: context.issue.number,
+                    body: `ℹ️ You are already assigned to this issue, @${commenter}!`
+                  });
+                  return;
+                }
+                
+                // Issue is assigned to someone else
+                const assignees = issue.assignees.map(a => a.login).join(', ');
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  body: `❌ This issue is already assigned to: ${assignees}\n\nIf you'd like to work on this issue, please ask the current assignee(s) to use \`/unassign\` first, or contact a maintainer.`
+                });
+                return;
+              }
 
-            // Add a confirmation comment
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body: `✅ Issue assigned to @${commenter}!\n\n**Next steps:**\n1. Read our [Contributing Guidelines](.github/CONTRIBUTING.md)\n2. Check for any issue dependencies\n3. Set up your development environment using [SETUP.md](.github/SETUP.md)\n4. Create a branch: \`git checkout -b feature/#${context.issue.number}\`\n5. Start working on the issue!\n\nGood luck! 🚀`
-            });
-
-            // Add "in-progress" label if it exists
-            try {
-              await github.rest.issues.addLabels({
+              // Assign the issue
+              await github.rest.issues.addAssignees({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: context.issue.number,
-                labels: ['in-progress']
+                assignees: [commenter]
               });
-            } catch (error) {
-              console.log('in-progress label does not exist, skipping...');
-            }
 
-      - name: Handle unauthorized assignment attempt
-        if: steps.check_permissions.outputs.result != 'true'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body: `❌ Sorry, only the issue author or project collaborators can assign issues.\n\nIf you'd like to contribute:\n1. Fork the repository\n2. Check our [Contributing Guidelines](.github/CONTRIBUTING.md)\n3. Comment on the issue expressing your interest\n4. Wait for a maintainer to assign it to you\n\nThanks for your interest in contributing! 🙏`
-            });
+              // Update labels
+              try {
+                // Remove "ready to be taken" label
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  name: 'ready to be taken'
+                });
+                
+                // Add "in-progress" label
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  labels: ['in-progress']
+                });
+              } catch (error) {
+                console.log('Label operations failed, continuing...');
+              }
+
+              // Add a confirmation comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: `✅ Issue assigned to @${commenter}!\n\n**Next steps:**\n1. Read our [Contributing Guidelines](https://github.com/anisharma07/Attendance-AI/blob/main/.github/CONTRIBUTING.md)\n2. Check for any issue dependencies in the issue description\n3. Set up your development environment using [SETUP.md](https://github.com/anisharma07/Attendance-AI/blob/main/.github/SETUP.md)\n4. Create a branch: \`git checkout -b feature/#${context.issue.number}\`\n5. Start working on the issue!\n\n**Remember:** Please close this issue after your PR is successfully merged.\n\nGood luck! 🚀`
+              });
+            }
