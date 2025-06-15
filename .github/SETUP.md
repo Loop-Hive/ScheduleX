@@ -15,7 +15,7 @@ Ensure you have the following installed:
 ### 1. Clone the Repository
 
 ```sh
-git clone https://github.com/anisharma07/React-native-attendance-app.git
+git clone https://github.com/<your_user_name>/Attendance-AI.git
 cd Attendance-AI
 ```
 
