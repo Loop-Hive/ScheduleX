@@ -1,0 +1,132 @@
+name: 📚 Documentation
+description: Suggest improvements or report issues with documentation
+title: '[DOCS] '
+labels: ['documentation', 'active']
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve our documentation! Clear docs make the project accessible to everyone.
+
+        📖 **Documentation includes**: 
+        - README.md, SETUP.md, CONTRIBUTING.md
+        - Code comments and inline documentation
+        - API documentation
+        - Tutorial guides
+
+  - type: dropdown
+    id: doc-type
+    attributes:
+      label: 📋 Documentation Type
+      description: What type of documentation needs attention?
+      options:
+        - README.md
+        - SETUP.md
+        - CONTRIBUTING.md
+        - Code Comments
+        - API Documentation
+        - Tutorial/Guide
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: issue-type
+    attributes:
+      label: 🔧 Issue Type
+      description: What kind of documentation issue is this?
+      options:
+        - Missing Information
+        - Incorrect Information
+        - Outdated Information
+        - Unclear Instructions
+        - Typo/Grammar Error
+        - New Documentation Needed
+        - Improvement Suggestion
+    validations:
+      required: true
+
+  - type: textarea
+    id: current-problem
+    attributes:
+      label: 🤔 Current Problem
+      description: What's wrong with the current documentation or what's missing?
+      placeholder: 'The current documentation is unclear about...'
+    validations:
+      required: true
+
+  - type: textarea
+    id: location
+    attributes:
+      label: 📍 Location
+      description: Where is this documentation issue located?
+      placeholder: |
+        - File: README.md
+        - Section: Installation
+        - Line: 45-50
+        - URL: https://github.com/...
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggested-improvement
+    attributes:
+      label: 💡 Suggested Improvement
+      description: How would you improve this documentation?
+      placeholder: 'The documentation should explain...'
+    validations:
+      required: true
+
+  - type: textarea
+    id: target-audience
+    attributes:
+      label: 👥 Target Audience
+      description: Who would benefit from this documentation improvement?
+      placeholder: 'New contributors, experienced developers, end users...'
+    validations:
+      required: false
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: ⚡ Priority Level
+      description: How important is this documentation improvement?
+      options:
+        - Low - Minor improvement
+        - Medium - Helpful for users
+        - High - Critical for project usability
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-content
+    attributes:
+      label: ✏️ Proposed Content
+      description: If you have specific content suggestions, please share them
+      placeholder: "Here's what the documentation could say..."
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: 📝 Additional Context
+      description: Any other context, examples, or references
+      placeholder: 'Related issues, external documentation references...'
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: ✅ Contribution
+      description: Please confirm the following
+      options:
+        - label: I have searched existing issues to ensure this is not a duplicate
+          required: true
+        - label: I am willing to help write/improve this documentation if needed
+          required: false
+        - label: I understand the importance of clear documentation for the project
+          required: true
