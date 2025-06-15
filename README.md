@@ -2,7 +2,7 @@
 
 A **React Native** application to track and manage attendance efficiently. The app allows users to mark attendance, view attendance records, and analyze trends. Built with **React Native**, it ensures a smooth and responsive experience across both Android and iOS platforms.
 
-- Designed on Figma ([link](https://www.figma.com/design/k0Mi0n6jNWGK5l1Jss1jbb/Untitled?node-id=0-1&t=fnfzmdtX0QVB6srI-1))
+- Designed on Figma ([link](https://www.figma.com/design/DrY27OZ8HGY1tmchlbkqes/Schedule-Keeper?node-id=12-2&p=f&t=gkQeY0d9I6aBPi8E-0))
 
 - Download at: [apk link](https://github.com/anisharma07/React-native-attendance-app/releases/download/v1.0.4/app-release.apk)
 
