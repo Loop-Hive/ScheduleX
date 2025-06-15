@@ -19,7 +19,7 @@ cd Attendance-AI
 
 ### Step 3: Set Up the Development Environment
 
-Follow the complete setup instructions in our [**SETUP.md**](.github/SETUP.md) file to configure your development environment.
+Follow the complete setup instructions in our [**SETUP.md**](https://github.com/anisharma07/Attendance-AI/blob/main/.github/SETUP.md) file to configure your development environment.
 
 ## 📋 Contribution Workflow
 
@@ -127,7 +127,7 @@ After your PR is successfully merged, go to the issue page that mark the issue a
 
 - [ ] Forked the repository
 - [ ] Cloned the fork locally
-- [ ] Completed setup using [SETUP.md](.github/SETUP.md)
+- [ ] Completed setup using [SETUP.md](https://github.com/anisharma07/Attendance-AI/blob/main/.github/SETUP.md)
 - [ ] Assigned issue to yourself
 - [ ] Checked for issue dependencies
 - [ ] Created feature branch with proper naming
