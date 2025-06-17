@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import useStore from '../store/store';
 import {CardInterface, SelectedDayCard, Days} from '../types/cards';
-import Card from '../components/Cards/Card';
+import Card from '../components/cards/Card';
 import Spacer from '../components/Spacer';
 import {convertToStartSeconds, convertToUTM} from '../utils/functions';
 interface TimeProps {
@@ -518,7 +518,7 @@ const styles = StyleSheet.create({
     color: '#18181B',
   },
   contentContainer2: {
-    marginTop: 20,
+    // marginTop: 20,
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',

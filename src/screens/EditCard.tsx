@@ -539,9 +539,9 @@ const EditCard: React.FC = ({navigation, route}: any) => {
 
 const styles = StyleSheet.create({
   header: {
-    borderRadius: 15,
+    // borderRadius: 15,
     width: '100%',
-    marginTop: 20,
+    // marginTop: 20,
     margin: 'auto',
     paddingBottom: 20,
     flexDirection: 'row',
@@ -594,7 +594,7 @@ const styles = StyleSheet.create({
   topContainer: {
     flex: 1,
     backgroundColor: '#18181B',
-    padding: 16,
+    paddingHorizontal: 16,
   },
   scrollView: {
     flex: 0,
