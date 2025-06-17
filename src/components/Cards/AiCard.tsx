@@ -32,6 +32,8 @@ interface CardProps {
   tagColor: string;
   delay: number;
   days: Days;
+  onAdd?: () => void;
+  onClear?: () => void;
 }
 const AiCard: React.FC<CardProps> = ({
   // id,
@@ -40,6 +42,8 @@ const AiCard: React.FC<CardProps> = ({
   tagColor,
   // delay,
   days,
+  onAdd,
+  onClear,
 }) => {
   return (
     <View style={styles.cardWrapper}>
@@ -57,14 +61,22 @@ const AiCard: React.FC<CardProps> = ({
             </View>
           </View>
           <View style={styles.actionsRow}>
-            <TouchableOpacity style={[styles.actionButton, styles.addButton]}>
+            <TouchableOpacity 
+              style={[styles.actionButton, styles.addButton]}
+              onPress={onAdd}
+              activeOpacity={0.7}
+            >
               <Text style={[styles.actionText]}>Add</Text>
               <Image
                 source={require('../../assets/icons/plus.png')}
                 style={styles.iconsStyle}
               />
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.actionButton, styles.closeButton]}>
+            <TouchableOpacity 
+              style={[styles.actionButton, styles.closeButton]}
+              onPress={onClear}
+              activeOpacity={0.7}
+            >
               <Text style={styles.actionText}>Clear</Text>
               <Image
                 source={require('../../assets/icons/bin.png')}

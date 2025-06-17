@@ -16,6 +16,7 @@ import pickCSVFile from '../utils/csv-picker';
 import CSVTable from '../components/CsvTable';
 import {GOOGLE_GEMINI_API_KEY} from '@env';
 import {formatTimetableToMarkdown} from '../utils/ArrayFormatter';
+import {useStore} from '../store/store';
 
 interface Slots {
   start: string;
@@ -67,6 +68,7 @@ const dayItem = {
 };
 
 const AiScreen: React.FC = () => {
+  const { activeRegister, addAiCard, addMultipleAiCards } = useStore();
   const [userInput, setUserInput] = useState<string>('');
   const [data, setCardsData] = useState<CardProps[]>([]);
   // const [response, setResponse] = useState('');
@@ -211,9 +213,50 @@ const AiScreen: React.FC = () => {
       setLoading(false);
     }
   };
-  const handleAcceptAll = async () => {};
+  const handleAcceptAll = async () => {
+    try {
+      addMultipleAiCards(activeRegister, data);
+      Alert.alert('Success', `${data.length} cards added to your register!`);
+      setCardsData([]);
+      setUserInput('');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to add cards to register.');
+    }
+  };
+
   const handleRejectAll = async () => {
     setCardsData([]);
+  };
+
+  const handleAddCard = (cardData: CardProps) => {
+    try {
+      addAiCard(activeRegister, cardData);
+      Alert.alert('Success', 'Card added to your register!');
+      // Remove the card from the preview list
+      setCardsData(prev => prev.filter(card => card.id !== cardData.id));
+    } catch (error) {
+      Alert.alert('Error', 'Failed to add card to register.');
+    }
+  };
+
+  const handleClearCard = (cardId: number) => {
+    Alert.alert(
+      'Remove Card',
+      'Are you sure you want to remove this card from the preview?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: () => {
+            setCardsData(prev => prev.filter(card => card.id !== cardId));
+          },
+        },
+      ]
+    );
   };
   return (
     <View style={styles.container}>
@@ -306,6 +349,8 @@ const AiScreen: React.FC = () => {
               tagColor={item.tagColor}
               days={item.days}
               delay={index * 100}
+              onAdd={() => handleAddCard(item)}
+              onClear={() => handleClearCard(item.id)}
             />
           ))
         )}
