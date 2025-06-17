@@ -40,6 +40,8 @@ interface StoreState {
   editCard: (registerId: number, card: CardInterface, cardId: number) => void;
   setRegisterCardSize: (registerId: number, inputSize: string) => void;
   removeCard: (registerId: number, cardIndex: number) => void;
+  addAiCard: (registerId: number, aiCard: any) => void;
+  addMultipleAiCards: (registerId: number, aiCards: any[]) => void;
 }
 
 export const useStore = create<StoreState>()(
@@ -412,6 +414,68 @@ export const useStore = create<StoreState>()(
           },
           updatedAt: new Date(),
         })),
+
+      addAiCard: (registerId: number, aiCard: any) =>
+        set(state => {
+          const currentCards = state.registers[registerId]?.cards || [];
+          const newCardId = currentCards.length > 0 ? Math.max(...currentCards.map(c => c.id)) + 1 : 0;
+          
+          const cardInterface: CardInterface = {
+            id: newCardId,
+            title: aiCard.title,
+            present: 0,
+            total: 0,
+            target_percentage: aiCard.target_percentage,
+            tagColor: aiCard.tagColor,
+            days: aiCard.days,
+            markedAt: [],
+            hasLimit: false,
+            limit: 0,
+            limitType: 'with-absent',
+          };
+
+          return {
+            registers: {
+              ...state.registers,
+              [registerId]: {
+                ...state.registers[registerId],
+                cards: [...currentCards, cardInterface],
+              },
+            },
+            updatedAt: new Date(),
+          };
+        }),
+
+      addMultipleAiCards: (registerId: number, aiCards: any[]) =>
+        set(state => {
+          const currentCards = state.registers[registerId]?.cards || [];
+          const startId = currentCards.length > 0 ? Math.max(...currentCards.map(c => c.id)) + 1 : 0;
+          
+          const newCards: CardInterface[] = aiCards.map((aiCard, index) => ({
+            id: startId + index,
+            title: aiCard.title,
+            present: 0,
+            total: 0,
+            target_percentage: aiCard.target_percentage,
+            tagColor: aiCard.tagColor,
+            days: aiCard.days,
+            markedAt: [],
+            hasLimit: false,
+            limit: 0,
+            limitType: 'with-absent',
+          }));
+
+          return {
+            registers: {
+              ...state.registers,
+              [registerId]: {
+                ...state.registers[registerId],
+                cards: [...currentCards, ...newCards],
+              },
+            },
+            updatedAt: new Date(),
+          };
+        }),
     }),
     {
       name: 'registers-storage',
