@@ -6,12 +6,14 @@ import Tabs from './Tabs/Tabs';
 import AddCard from './screens/AddCard';
 import EditCard from './screens/EditCard';
 import ViewCardDetails from './screens/ViewCardDetails';
+import AiScreen from './screens/AiScreen';
 
 type RootStackParamList = {
   Tab: undefined;
   Add: undefined;
   Edit: {card_register: number; card_id: number};
   CardDetails: {card_register: number; card_id: number};
+  Ai: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -19,7 +21,12 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 const MainApp = ({}) => {
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={{headerShown: false}}>
+      <Stack.Navigator
+        screenOptions={{
+          headerShown: false,
+          statusBarStyle: 'light',
+          statusBarBackgroundColor: '#18181B',
+        }}>
         <Stack.Screen
           name="Tab"
           component={Tabs}
@@ -40,6 +47,11 @@ const MainApp = ({}) => {
           name="CardDetails"
           component={ViewCardDetails}
           options={{animation: 'slide_from_right'}}
+        />
+        <Stack.Screen
+          name="Ai"
+          component={AiScreen}
+          options={{animation: 'slide_from_bottom'}}
         />
       </Stack.Navigator>
     </NavigationContainer>

@@ -42,7 +42,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: '92%',
     paddingBottom: 5,
-    paddingTop: 20,
+    // paddingTop: 20,
   },
   registerNameTxt: {
     fontSize: 20,

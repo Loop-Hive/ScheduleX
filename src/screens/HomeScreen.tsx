@@ -1,5 +1,5 @@
 import React, {useState, useEffect} from 'react';
-import Card from '../components/Cards/Card';
+import Card from '../components/cards/Card';
 import Spacer from '../components/Spacer';
 import {
   View,
@@ -10,7 +10,7 @@ import {
   TouchableOpacity,
   Image,
 } from 'react-native';
-import MiniCard from '../components/Cards/MiniCard';
+import MiniCard from '../components/cards/MiniCard';
 import useStore from '../store/store';
 import {CardInterface} from '../types/cards';
 import Header from '../components/Header';
@@ -72,11 +72,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         contentInsetAdjustmentBehavior="automatic"
         style={styles.scrollView}
         contentContainerStyle={styles.contentContainer}>
-        {/* <Card />
-        <Card />
-        <Card />
-        <Card />
-        <Card /> */}
+        {/* Cards */}
         {registers[activeRegister].card_size === 'normal' &&
           currentRegister.map((card, index) => (
             <Card
@@ -128,6 +124,7 @@ const styles = StyleSheet.create({
 
   scrollView: {
     flex: 1,
+    marginBottom: 77,
   },
   logo: {
     width: 50,

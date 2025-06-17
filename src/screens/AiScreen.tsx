@@ -9,7 +9,7 @@ import {
   Alert,
   TouchableOpacity,
 } from 'react-native';
-import AiCard from '../components/Cards/AiCard';
+import AiCard from '../components/cards/AiCard';
 import {GoogleGenAI, Type} from '@google/genai';
 import Loader from '../components/Loader';
 import pickCSVFile from '../utils/csv-picker';
@@ -68,7 +68,7 @@ const dayItem = {
 };
 
 const AiScreen: React.FC = () => {
-  const { activeRegister, addAiCard, addMultipleAiCards } = useStore();
+  const {activeRegister, addAiCard, addMultipleAiCards} = useStore();
   const [userInput, setUserInput] = useState<string>('');
   const [data, setCardsData] = useState<CardProps[]>([]);
   // const [response, setResponse] = useState('');
@@ -255,7 +255,7 @@ const AiScreen: React.FC = () => {
             setCardsData(prev => prev.filter(card => card.id !== cardId));
           },
         },
-      ]
+      ],
     );
   };
   return (

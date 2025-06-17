@@ -1,7 +1,8 @@
 import React, {useEffect} from 'react';
 // import 'react-native-reanimated';
 
-import {SafeAreaView, StatusBar, StyleSheet, View} from 'react-native';
+import {StatusBar, StyleSheet} from 'react-native';
+import {SafeAreaProvider, SafeAreaView} from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import MainApp from './src/main';
 import SplashScreen from 'react-native-splash-screen';
@@ -16,28 +17,31 @@ function App(): React.JSX.Element {
   }, []);
 
   return (
-    <GestureHandlerRootView style={styles.gesture}>
-      <View style={styles.container}>
-        <StatusBar barStyle={'light-content'} backgroundColor="#18181B" />
-        <SafeAreaView style={styles.safeArea}>
+    <SafeAreaProvider>
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <GestureHandlerRootView style={styles.gesture}>
+          <StatusBar
+            barStyle={'light-content'}
+            backgroundColor="#18181B"
+            translucent={false}
+            hidden={false}
+          />
           <MainApp />
           <Toast />
-        </SafeAreaView>
-      </View>
-    </GestureHandlerRootView>
+        </GestureHandlerRootView>
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
     backgroundColor: '#18181B',
   },
-  safeArea: {
-    flex: 1,
-  },
   gesture: {
     flex: 1,
+    backgroundColor: '#18181B',
   },
 });
 export default App;
