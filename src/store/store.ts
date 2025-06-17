@@ -40,8 +40,8 @@ interface StoreState {
   editCard: (registerId: number, card: CardInterface, cardId: number) => void;
   setRegisterCardSize: (registerId: number, inputSize: string) => void;
   removeCard: (registerId: number, cardIndex: number) => void;
-  addAiCard: (registerId: number, aiCard: any) => void;
-  addMultipleAiCards: (registerId: number, aiCards: any[]) => void;
+  addAiCard: (registerId: number, aiCard: AiCardInterface) => void;
+  addMultipleAiCards: (registerId: number, aiCards: AiCardInterface[]) => void;
 }
 
 export const useStore = create<StoreState>()(
