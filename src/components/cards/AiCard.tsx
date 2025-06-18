@@ -61,7 +61,7 @@ const AiCard: React.FC<CardProps> = ({
             </View>
           </View>
           <View style={styles.actionsRow}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.actionButton, styles.addButton]}
               onPress={onAdd}
               activeOpacity={0.7}
@@ -72,7 +72,7 @@ const AiCard: React.FC<CardProps> = ({
                 style={styles.iconsStyle}
               />
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.actionButton, styles.closeButton]}
               onPress={onClear}
               activeOpacity={0.7}

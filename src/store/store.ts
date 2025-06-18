@@ -1,13 +1,15 @@
 import {create} from 'zustand';
 import {persist, createJSONStorage} from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {CardInterface} from '../types/cards';
+import {CardInterface, AiCardInterface} from '../types/cards';
+import {Tagcolors} from '../types/allCardConstraint';
 
 interface Registers {
   [key: number]: {
     name: string;
     cards: CardInterface[];
     card_size: string;
+    color: string;
   };
 }
 
@@ -42,6 +44,7 @@ interface StoreState {
   removeCard: (registerId: number, cardIndex: number) => void;
   addAiCard: (registerId: number, aiCard: AiCardInterface) => void;
   addMultipleAiCards: (registerId: number, aiCards: AiCardInterface[]) => void;
+  setRegisterColor: (registerId: number, color: string) => void;
 }
 
 export const useStore = create<StoreState>()(
@@ -52,6 +55,7 @@ export const useStore = create<StoreState>()(
           name: 'Semester VI',
           cards: [],
           card_size: 'normal',
+          color: Tagcolors[0], // Default to first color
         },
       },
       activeRegister: 0,
@@ -84,16 +88,22 @@ export const useStore = create<StoreState>()(
           updatedAt: date,
         })),
       addRegister: (registerId: number, registerName: string) =>
-        set(state => ({
-          registers: {
-            ...state.registers,
-            [registerId]: {
-              name: registerName,
-              cards: [],
-              card_size: 'normal',
+        set(state => {
+          const usedColors = Object.values(state.registers).map(reg => reg.color);
+          const availableColor = Tagcolors.find(color => !usedColors.includes(color)) || Tagcolors[registerId % Tagcolors.length];
+
+          return {
+            registers: {
+              ...state.registers,
+              [registerId]: {
+                name: registerName,
+                cards: [],
+                card_size: 'normal',
+                color: availableColor,
+              },
             },
-          },
-        })),
+          };
+        }),
 
       renameRegister: (registerId: number, registerName: string) =>
         set(state => ({
@@ -419,7 +429,7 @@ export const useStore = create<StoreState>()(
         set(state => {
           const currentCards = state.registers[registerId]?.cards || [];
           const newCardId = currentCards.length > 0 ? Math.max(...currentCards.map(c => c.id)) + 1 : 0;
-          
+
           const cardInterface: CardInterface = {
             id: newCardId,
             title: aiCard.title,
@@ -450,7 +460,7 @@ export const useStore = create<StoreState>()(
         set(state => {
           const currentCards = state.registers[registerId]?.cards || [];
           const startId = currentCards.length > 0 ? Math.max(...currentCards.map(c => c.id)) + 1 : 0;
-          
+
           const newCards: CardInterface[] = aiCards.map((aiCard, index) => ({
             id: startId + index,
             title: aiCard.title,
@@ -476,6 +486,18 @@ export const useStore = create<StoreState>()(
             updatedAt: new Date(),
           };
         }),
+
+      setRegisterColor: (registerId: number, color: string) =>
+        set(state => ({
+          registers: {
+            ...state.registers,
+            [registerId]: {
+              ...state.registers[registerId],
+              color: color,
+            },
+          },
+          updatedAt: new Date(),
+        })),
     }),
     {
       name: 'registers-storage',

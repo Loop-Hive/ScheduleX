@@ -12,6 +12,7 @@ import {
   TextInput,
 } from 'react-native';
 import useStore from '../store/store';
+import RegisterColorPicker from './RegisterColorPicker';
 
 type RegisterProps = {
   name: string;
@@ -33,6 +34,8 @@ const Register: React.FC<RegisterProps> = ({
     removeRegister,
     renameRegister,
     clearCardsAttendance,
+    setRegisterColor,
+    registers,
   } = useStore();
 
   const toggleDropdown = () => {
@@ -56,6 +59,7 @@ const Register: React.FC<RegisterProps> = ({
   };
   const [displayName, setDisplayName] = useState(name);
   const [isEditable, setIsEditable] = useState(false);
+  const [showColorPicker, setShowColorPicker] = useState(false);
 
   const handleRegisterDelete = () => {
     Alert.alert(
@@ -84,6 +88,16 @@ const Register: React.FC<RegisterProps> = ({
   const handleRename = () => {
     setIsEditable(true);
     toggleDropdown();
+  };
+
+  const handleColorPicker = () => {
+    setShowColorPicker(true);
+    toggleDropdown();
+  };
+
+  const handleColorSelect = (color: string) => {
+    setRegisterColor(index, color);
+    setShowColorPicker(false);
   };
   const handleMenuOrRename = () => {
     if (isEditable) {
@@ -123,7 +137,7 @@ const Register: React.FC<RegisterProps> = ({
   };
   useEffect(() => {
     Animated.timing(dropdownHeight, {
-      toValue: isDropdownOpen ? 42 : 0,
+      toValue: isDropdownOpen ? 56 : 0, // Increased height for 4 items
       duration: 150,
       easing: Easing.out(Easing.ease),
       useNativeDriver: false,
@@ -176,6 +190,16 @@ const Register: React.FC<RegisterProps> = ({
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.dropdownItem}
+                onPress={handleColorPicker}>
+                <View
+                  style={[
+                    styles.colorIndicator,
+                    {backgroundColor: registers[index]?.color || '#FFFFFF'},
+                  ]}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.dropdownItem}
                 onPress={handleClearCards}>
                 <Image
                   source={require('../assets/icons/dropDownMenu/clear.png')}
@@ -194,6 +218,14 @@ const Register: React.FC<RegisterProps> = ({
           </Animated.View>
         </View>
       )}
+
+      <RegisterColorPicker
+        visible={showColorPicker}
+        onClose={() => setShowColorPicker(false)}
+        currentColor={registers[index]?.color || '#FFFFFF'}
+        onColorSelect={handleColorSelect}
+        registerName={name}
+      />
     </View>
   );
 };
@@ -447,6 +479,13 @@ const styles = StyleSheet.create({
   },
   dropdownItemText: {
     fontSize: 16,
+  },
+  colorIndicator: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#fff',
   },
 
   // fixLine: {

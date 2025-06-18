@@ -55,7 +55,7 @@ const SubjectsScreen: React.FC<SubjectsScreenProps> = ({
         onPress={() => handleViewDetails(activeRegister, item.id)}
         onLongPress={() => handleMenuOpen(activeRegister, item.id)}>
         <View style={styles.subjectHeader}>
-          <View style={[styles.colorTag, {backgroundColor: item.tagColor}]} />
+          <View style={[styles.colorTag, {backgroundColor: registers[activeRegister]?.color || item.tagColor}]} />
           <Text style={styles.subjectTitle} numberOfLines={1}>
             {item.title}
           </Text>

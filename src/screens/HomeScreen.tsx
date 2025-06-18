@@ -82,7 +82,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
               present={card.present}
               total={card.total}
               target_percentage={card.target_percentage}
-              tagColor={card.tagColor}
+              tagColor={registers[activeRegister]?.color || card.tagColor}
               cardRegister={activeRegister}
               handleMenuOpen={handleMenuOpen}
               hasLimit={card.hasLimit}
@@ -101,7 +101,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
               present={card.present}
               total={card.total}
               target_percentage={card.target_percentage}
-              tagColor={card.tagColor}
+              tagColor={registers[activeRegister]?.color || card.tagColor}
               cardRegister={activeRegister}
               handleMenuOpen={handleMenuOpen}
             />
