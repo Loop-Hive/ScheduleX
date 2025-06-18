@@ -50,14 +50,7 @@ interface StoreState {
 export const useStore = create<StoreState>()(
   persist(
     set => ({
-      registers: {
-        0: {
-          name: 'Semester VI',
-          cards: [],
-          card_size: 'normal',
-          color: Tagcolors[0], // Default to first color
-        },
-      },
+      registers: {},
       activeRegister: 0,
       copyRegister: 0,
       updatedAt: null,
@@ -89,8 +82,12 @@ export const useStore = create<StoreState>()(
         })),
       addRegister: (registerId: number, registerName: string) =>
         set(state => {
-          const usedColors = Object.values(state.registers).map(reg => reg.color);
-          const availableColor = Tagcolors.find(color => !usedColors.includes(color)) || Tagcolors[registerId % Tagcolors.length];
+          const usedColors = Object.values(state.registers).map(
+            reg => reg.color,
+          );
+          const availableColor =
+            Tagcolors.find(color => !usedColors.includes(color)) ||
+            Tagcolors[registerId % Tagcolors.length];
 
           return {
             registers: {
@@ -428,7 +425,10 @@ export const useStore = create<StoreState>()(
       addAiCard: (registerId: number, aiCard: any) =>
         set(state => {
           const currentCards = state.registers[registerId]?.cards || [];
-          const newCardId = currentCards.length > 0 ? Math.max(...currentCards.map(c => c.id)) + 1 : 0;
+          const newCardId =
+            currentCards.length > 0
+              ? Math.max(...currentCards.map(c => c.id)) + 1
+              : 0;
 
           const cardInterface: CardInterface = {
             id: newCardId,
@@ -459,7 +459,10 @@ export const useStore = create<StoreState>()(
       addMultipleAiCards: (registerId: number, aiCards: any[]) =>
         set(state => {
           const currentCards = state.registers[registerId]?.cards || [];
-          const startId = currentCards.length > 0 ? Math.max(...currentCards.map(c => c.id)) + 1 : 0;
+          const startId =
+            currentCards.length > 0
+              ? Math.max(...currentCards.map(c => c.id)) + 1
+              : 0;
 
           const newCards: CardInterface[] = aiCards.map((aiCard, index) => ({
             id: startId + index,

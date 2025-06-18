@@ -181,7 +181,7 @@ const EditCard: React.FC = ({navigation, route}: any) => {
       Alert.alert('Error', 'Please fill Correct Time!');
       return;
     }
-    if (card.days[currDayTime.day].length >= 3) {
+    if (card.days[currDayTime.day]?.length >= 3) {
       Alert.alert('Error', 'Maximum 3 Slots Allowed on a single Day!');
       return;
     }
