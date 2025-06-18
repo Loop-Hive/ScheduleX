@@ -7,6 +7,8 @@ import AddCard from './screens/AddCard';
 import EditCard from './screens/EditCard';
 import ViewCardDetails from './screens/ViewCardDetails';
 import AiScreen from './screens/AiScreen';
+import CreateRegisterScreen from './screens/CreateRegisterScreen';
+import {useStore} from './store/store';
 
 type RootStackParamList = {
   Tab: undefined;
@@ -18,7 +20,17 @@ type RootStackParamList = {
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-const MainApp = ({}) => {
+const MainApp = () => {
+  const {registers} = useStore();
+
+  // Check if registers array is empty
+  const hasRegisters = Object.keys(registers).length > 0;
+
+  // If no registers exist, show the CreateRegister screen
+  if (!hasRegisters) {
+    return <CreateRegisterScreen />;
+  }
+
   return (
     <NavigationContainer>
       <Stack.Navigator

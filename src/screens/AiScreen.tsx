@@ -17,6 +17,7 @@ import CSVTable from '../components/CsvTable';
 import {GOOGLE_GEMINI_API_KEY} from '@env';
 import {formatTimetableToMarkdown} from '../utils/ArrayFormatter';
 import {useStore} from '../store/store';
+// import {G} from 'react-native-svg';
 
 interface Slots {
   start: string;
@@ -99,6 +100,7 @@ const AiScreen: React.FC = () => {
   };
 
   const handleUserPrompt = async () => {
+    console.log('lol', GOOGLE_GEMINI_API_KEY);
     setLoading(true);
     if (!userInput) {
       Alert.alert('Error', 'Please enter a prompt.');

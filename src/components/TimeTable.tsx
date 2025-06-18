@@ -8,10 +8,8 @@ import {
   Dimensions,
   Animated,
 } from 'react-native';
-import {
-  GestureHandlerRootView,
-} from 'react-native-gesture-handler';
-import { getTextColorForBackground } from '../types/allCardConstraint';
+import {GestureHandlerRootView} from 'react-native-gesture-handler';
+import {getTextColorForBackground} from '../types/allCardConstraint';
 
 const {width: screenWidth, height: screenHeight} = Dimensions.get('window');
 
@@ -31,7 +29,7 @@ interface Subject {
 interface TimeTableProps {
   subjects: Subject[];
   selectedRegisters: number[];
-  registerNames: { [key: number]: string };
+  registerNames: {[key: number]: string};
 }
 
 const TimeTable: React.FC<TimeTableProps> = ({
@@ -41,20 +39,22 @@ const TimeTable: React.FC<TimeTableProps> = ({
 }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState(new Date().getDay()); // 0 = Sunday, 1 = Monday, etc.
-  const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null); // Track clicked subject
+  const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(
+    null,
+  ); // Track clicked subject
   const [hasAutoScrolled, setHasAutoScrolled] = useState(false); // Track if we've already auto-scrolled
   const scrollViewRef = useRef<ScrollView>(null);
   const currentTimeLineY = useRef(new Animated.Value(0)).current;
 
   // Days of the week - reordered to start from yesterday/today for better UX
   const getAllDays = () => [
-    { name: 'Sun', fullName: 'Sunday', index: 0 },
-    { name: 'Mon', fullName: 'Monday', index: 1 },
-    { name: 'Tue', fullName: 'Tuesday', index: 2 },
-    { name: 'Wed', fullName: 'Wednesday', index: 3 },
-    { name: 'Thu', fullName: 'Thursday', index: 4 },
-    { name: 'Fri', fullName: 'Friday', index: 5 },
-    { name: 'Sat', fullName: 'Saturday', index: 6 },
+    {name: 'Sun', fullName: 'Sunday', index: 0},
+    {name: 'Mon', fullName: 'Monday', index: 1},
+    {name: 'Tue', fullName: 'Tuesday', index: 2},
+    {name: 'Wed', fullName: 'Wednesday', index: 3},
+    {name: 'Thu', fullName: 'Thursday', index: 4},
+    {name: 'Fri', fullName: 'Friday', index: 5},
+    {name: 'Sat', fullName: 'Saturday', index: 6},
   ];
 
   // Reorder days to start from yesterday, putting today as 2nd item
@@ -81,7 +81,7 @@ const TimeTable: React.FC<TimeTableProps> = ({
     const ampm = hour < 12 ? 'AM' : 'PM';
     return {
       hour,
-      display: `${displayHour}${ampm}`,
+      display: `${displayHour} ${ampm}`,
       time24: `${hour.toString().padStart(2, '0')}:00`,
     };
   });
@@ -136,12 +136,20 @@ const TimeTable: React.FC<TimeTableProps> = ({
 
   // Check if two subjects overlap in time
   const subjectsOverlap = (subject1: Subject, subject2: Subject): boolean => {
-    const start1 = parseInt(subject1.startTime.split(':')[0]) + parseInt(subject1.startTime.split(':')[1]) / 60;
-    const end1 = parseInt(subject1.endTime.split(':')[0]) + parseInt(subject1.endTime.split(':')[1]) / 60;
-    const start2 = parseInt(subject2.startTime.split(':')[0]) + parseInt(subject2.startTime.split(':')[1]) / 60;
-    const end2 = parseInt(subject2.endTime.split(':')[0]) + parseInt(subject2.endTime.split(':')[1]) / 60;
+    const start1 =
+      parseInt(subject1.startTime.split(':')[0]) +
+      parseInt(subject1.startTime.split(':')[1]) / 60;
+    const end1 =
+      parseInt(subject1.endTime.split(':')[0]) +
+      parseInt(subject1.endTime.split(':')[1]) / 60;
+    const start2 =
+      parseInt(subject2.startTime.split(':')[0]) +
+      parseInt(subject2.startTime.split(':')[1]) / 60;
+    const end2 =
+      parseInt(subject2.endTime.split(':')[0]) +
+      parseInt(subject2.endTime.split(':')[1]) / 60;
 
-    return (start1 < end2 && start2 < end1);
+    return start1 < end2 && start2 < end1;
   };
 
   // Group overlapping subjects together
@@ -164,7 +172,7 @@ const TimeTable: React.FC<TimeTableProps> = ({
 
           // Check if this subject overlaps with any subject in the current group
           const overlapsWithGroup = group.some(groupSubject =>
-            subjectsOverlap(groupSubject, otherSubject)
+            subjectsOverlap(groupSubject, otherSubject),
           );
 
           if (overlapsWithGroup) {
@@ -182,7 +190,12 @@ const TimeTable: React.FC<TimeTableProps> = ({
   };
 
   // Calculate subject position within time slot with overlap handling
-  const getSubjectStyle = (subject: Subject, groupIndex: number, positionInGroup: number, totalInGroup: number) => {
+  const getSubjectStyle = (
+    subject: Subject,
+    groupIndex: number,
+    positionInGroup: number,
+    totalInGroup: number,
+  ) => {
     const startHour = parseInt(subject.startTime.split(':')[0], 10);
     const startMinutes = parseInt(subject.startTime.split(':')[1], 10);
     const endHour = parseInt(subject.endTime.split(':')[0], 10);
@@ -194,8 +207,14 @@ const TimeTable: React.FC<TimeTableProps> = ({
     const height = endPosition - startPosition;
 
     // Calculate width and position based on group overlaps
-    const cardWidth = totalInGroup > 1 ? (screenWidth - 80) / totalInGroup - 4 : screenWidth - 84;
-    const leftOffset = totalInGroup > 1 ? positionInGroup * ((screenWidth - 80) / totalInGroup) : 0;
+    const cardWidth =
+      totalInGroup > 1
+        ? (screenWidth - 80) / totalInGroup - 4
+        : screenWidth - 84;
+    const leftOffset =
+      totalInGroup > 1
+        ? positionInGroup * ((screenWidth - 80) / totalInGroup)
+        : 0;
 
     return {
       position: 'absolute' as const,
@@ -209,7 +228,7 @@ const TimeTable: React.FC<TimeTableProps> = ({
 
   // Handle subject card click to show/hide time details
   const handleSubjectClick = (subjectId: string) => {
-    setSelectedSubjectId(prev => prev === subjectId ? null : subjectId);
+    setSelectedSubjectId(prev => (prev === subjectId ? null : subjectId));
   };
 
   // Handle clicking anywhere else to hide time details
@@ -222,7 +241,12 @@ const TimeTable: React.FC<TimeTableProps> = ({
     return todaySubjects.find(subject => subject.id === selectedSubjectId);
   };
 
-  const renderSubjectCard = (subject: Subject, groupIndex: number, positionInGroup: number, totalInGroup: number) => {
+  const renderSubjectCard = (
+    subject: Subject,
+    groupIndex: number,
+    positionInGroup: number,
+    totalInGroup: number,
+  ) => {
     const textColor = getTextColorForBackground(subject.color);
     const isSelected = selectedSubjectId === subject.id;
 
@@ -235,17 +259,21 @@ const TimeTable: React.FC<TimeTableProps> = ({
           {backgroundColor: subject.color},
           isSelected && styles.subjectCardSelected,
         ]}
-        onPress={(e) => {
+        onPress={e => {
           e.stopPropagation();
           handleSubjectClick(subject.id);
         }}
         activeOpacity={0.8}>
         <View style={styles.subjectContent}>
-          <Text style={[styles.subjectName, {color: textColor}]} numberOfLines={2}>
+          <Text
+            style={[styles.subjectName, {color: textColor}]}
+            numberOfLines={2}>
             {subject.name}
           </Text>
           {subject.classroom && (
-            <Text style={[styles.subjectClassroom, {color: textColor}]} numberOfLines={1}>
+            <Text
+              style={[styles.subjectClassroom, {color: textColor}]}
+              numberOfLines={1}>
               📍 {subject.classroom}
             </Text>
           )}
@@ -281,18 +309,18 @@ const TimeTable: React.FC<TimeTableProps> = ({
     return (
       <>
         {/* Start time line */}
-        <View style={[styles.timeIndicatorLine, { top: startPosition }]} />
+        <View style={[styles.timeIndicatorLine, {top: startPosition}]} />
 
         {/* End time line */}
-        <View style={[styles.timeIndicatorLine, { top: endPosition }]} />
+        <View style={[styles.timeIndicatorLine, {top: endPosition}]} />
 
         {/* Start time label in left column */}
-        <View style={[styles.timeIndicatorLabel, { top: startPosition }]}>
+        <View style={[styles.timeIndicatorLabel, {top: startPosition}]}>
           <Text style={styles.timeIndicatorText}>{startTimeFormatted}</Text>
         </View>
 
         {/* End time label in left column */}
-        <View style={[styles.timeIndicatorLabel, { top: endPosition }]}>
+        <View style={[styles.timeIndicatorLabel, {top: endPosition}]}>
           <Text style={styles.timeIndicatorText}>{endTimeFormatted}</Text>
         </View>
       </>
@@ -307,7 +335,7 @@ const TimeTable: React.FC<TimeTableProps> = ({
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.dayTabsScrollView}>
-          {daysOfWeek.map((day) => (
+          {daysOfWeek.map(day => (
             <TouchableOpacity
               key={day.index}
               style={[
@@ -334,15 +362,22 @@ const TimeTable: React.FC<TimeTableProps> = ({
         <ScrollView
           ref={scrollViewRef}
           style={styles.scrollView}
-          showsVerticalScrollIndicator={false}
-          bounces={false}>
+          // showsVerticalScrollIndicator={false}
+          // bounces={false}
+        >
           <View style={styles.timeGrid}>
             {/* Time labels */}
             <View style={styles.timeLabelsContainer}>
               {hours.map(({hour, display}, index) => (
                 <View key={hour} style={styles.timeSlot}>
                   {/* Only show time label for every hour, positioned at the top border */}
-                  <Text style={[styles.timeLabel, { marginTop: index === 0 ? -6 : -6 }]}>{display}</Text>
+                  <Text
+                    style={[
+                      styles.timeLabel,
+                      {marginTop: index === 0 ? 6 : -6},
+                    ]}>
+                    {display}
+                  </Text>
                 </View>
               ))}
             </View>
@@ -372,7 +407,12 @@ const TimeTable: React.FC<TimeTableProps> = ({
             <View style={styles.subjectsContainer}>
               {getSubjectGroups().map((subjectGroup, groupIndex) =>
                 subjectGroup.map((subject, positionInGroup) =>
-                  renderSubjectCard(subject, groupIndex, positionInGroup, subjectGroup.length),
+                  renderSubjectCard(
+                    subject,
+                    groupIndex,
+                    positionInGroup,
+                    subjectGroup.length,
+                  ),
                 ),
               )}
             </View>
@@ -396,6 +436,9 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+    marginBottom: 76,
+    // marginTop: 8,
+    // paddingTop: 8,
   },
   timeGrid: {
     height: 24 * 80, // 24 hours * 80px per hour
@@ -430,8 +473,8 @@ const styles = StyleSheet.create({
     top: 0,
     right: 0,
     height: '100%',
-    borderTopWidth: 1,
-    borderTopColor: '#334155',
+    // borderTopWidth: 1,
+    // borderTopColor: '#334155',
   },
   hourDivider: {
     height: 80,
