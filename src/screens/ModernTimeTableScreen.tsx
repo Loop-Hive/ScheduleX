@@ -1,21 +1,19 @@
-import {useEffect, useState} from 'react';
-import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Dimensions,
-  Image,
-  Alert,
-} from 'react-native';
-import useStore from '../store/store';
-import {CardInterface, Days} from '../types/cards';
+import React, {useState, useEffect} from 'react';
+import {View, StyleSheet, Alert, Text, TouchableOpacity, Image} from 'react-native';
 import TimeTable from '../components/TimeTable';
+import useStore from '../store/store';
+import {CardInterface, Days, Slots} from '../types/cards';
 import { getPreviewColorForBackground } from '../types/allCardConstraint';
-interface TimeProps {
-  handleMenuOpen: (r: number, c: number) => void;
-}
+
+const daysKeyMap: Record<string, keyof Days> = {
+  Sunday: 'sun',
+  Monday: 'mon',
+  Tuesday: 'tue',
+  Wednesday: 'wed',
+  Thursday: 'thu',
+  Friday: 'fri',
+  Saturday: 'sat',
+};
 
 interface Subject {
   id: string;
@@ -29,37 +27,21 @@ interface Subject {
   total: number;
   dayOfWeek: number;
 }
-const daysOfWeek = [
-  'Sunday',
-  'Monday',
-  'Tuesday',
-  'Wednesday',
-  'Thursday',
-  'Friday',
-  'Saturday',
-];
 
-const daysKeyMap: Record<DayOfWeek, keyof Days> = {
-  Sunday: 'sun',
-  Monday: 'mon',
-  Tuesday: 'tue',
-  Wednesday: 'wed',
-  Thursday: 'thu',
-  Friday: 'fri',
-  Saturday: 'sat',
-};
+interface TimeTableScreenProps {
+  navigation: any;
+  handleMenuOpen: (r: number, c: number) => void;
+}
 
-type DayOfWeek = (typeof daysOfWeek)[number];
-
-const TimeTableScreen: React.FC<TimeProps> = ({
+const TimeTableScreen: React.FC<TimeTableScreenProps> = ({
   navigation,
-  // route,
   handleMenuOpen: _handleMenuOpen,
-}: any) => {
+}) => {
   const {registers, activeRegister, markPresent} = useStore();
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [selectedRegisters, setSelectedRegisters] = useState<number[]>([]);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
   // Initialize selectedRegisters with activeRegister by default
   useEffect(() => {
     if (Object.keys(registers).length > 0 && selectedRegisters.length === 0) {
@@ -80,7 +62,7 @@ const TimeTableScreen: React.FC<TimeProps> = ({
           // Convert each day's time slots to subjects
           Object.entries(card.days).forEach(([dayKey, slots]) => {
             if (slots && slots.length > 0) {
-              slots.forEach((slot: any, slotIndex: number) => {
+              slots.forEach((slot: Slots, slotIndex: number) => {
                 const dayOfWeek = Object.keys(daysKeyMap).find(
                   key => daysKeyMap[key] === dayKey,
                 );
@@ -122,13 +104,6 @@ const TimeTableScreen: React.FC<TimeProps> = ({
 
     setSubjects(convertedSubjects);
   }, [registers, selectedRegisters]);
-
-  const handleViewDetails = (r: number, c: number) => {
-    navigation.navigate('CardDetails', {
-      card_register: r,
-      card_id: c,
-    });
-  };
 
   // Helper functions for register selection
   const getAllRegisterIds = () => Object.keys(registers).map(key => parseInt(key, 10));
@@ -188,7 +163,7 @@ const TimeTableScreen: React.FC<TimeProps> = ({
           onPress={() => setIsDropdownOpen(false)}
         />
       )}
-      <View style={styles.contentContainer2}>
+      <View style={styles.headerContainer}>
         <View style={styles.titleSection}>
           <View style={styles.titleRow}>
             <Image
@@ -257,7 +232,6 @@ const TimeTableScreen: React.FC<TimeProps> = ({
           )}
         </View>
       </View>
-
       <TimeTable
         subjects={subjects}
         selectedRegisters={selectedRegisters}
@@ -274,100 +248,39 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#18181B',
-    height: '100%',
   },
-  scrollView: {
-    flex: 0,
-    flexGrow: 0,
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 999,
   },
-  scrollView2: {
-    flex: 1,
-  },
-  cardWrapperWfull: {width: '100%'},
-  emptyContainer: {
-    color: '#fff',
-    height: Dimensions.get('window').height - 400,
-    gap: 15,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  tabButtonSunday: {borderColor: '#6C6C6C', borderWidth: 1},
-  tabButtonSundayTxt: {
-    color: '#6C6C6C',
-  },
-  emptyText: {
-    color: '#5A5A5A',
-    fontSize: 20,
-  },
-  tabContainer: {
-    paddingVertical: 25,
-    paddingHorizontal: 20,
-  },
-  tabButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    marginHorizontal: 5,
-    borderRadius: 50,
-    borderWidth: 1,
-    borderColor: '#3D3D3D',
-  },
-  contentContainer: {
+  headerContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    backgroundColor: '#1F1F23',
+    borderBottomWidth: 1,
+    borderBottomColor: '#2D2D2D',
+    marginBottom: 12,
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'center',
-    flexWrap: 'wrap',
-    paddingTop: 20,
-  },
-  eventTypeTxt: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  cardMarginCover: {
-    marginBottom: 20,
-    width: '100%',
     alignItems: 'center',
-  },
-  selectedTabButton: {
-    backgroundColor: '#ffffff',
-    borderWidth: 0,
-  },
-  activeTabButton: {
-    borderColor: '#018CC8',
-    borderWidth: 1,
-  },
-  tabButtonText: {
-    color: '#fff',
-    fontSize: 16,
-  },
-  selectedTabButtonText: {
-    color: '#18181B',
-  },
-  contentContainer2: {
-    alignItems: 'center',
-    flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 20,
-    marginBottom: 10,
-    alignContent: 'center',
   },
   titleSection: {
-    flexDirection: 'column',
-    alignItems: 'flex-start',
+    flex: 1,
+    marginRight: 12,
     justifyContent: 'center',
-    gap: 2,
   },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 2,
   },
   timeTableIcon: {
-    width: 29,
-    height: 29,
+    width: 28,
+    height: 28,
     marginRight: 8,
     tintColor: '#FFFFFF',
   },
@@ -382,51 +295,34 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginLeft: 36, // Align with Schedule text (icon width 28px + marginRight 8px)
   },
-  cardSlotTime: {
-    color: '#A0A0A0',
-    width: '90%',
-    margin: 'auto',
-    marginBottom: 10,
-    fontSize: 14,
-    textAlign: 'left',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-  },
-  // New dropdown styles
-  overlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 999,
-  },
   dropdownContainer: {
     position: 'relative',
+    zIndex: 1000,
     minWidth: 120,
     maxWidth: 160,
   },
   dropdownButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     backgroundColor: '#2D2D2D',
     borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#3D3D3D',
+    borderColor: '#404040',
   },
   dropdownButtonText: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '500',
     flex: 1,
     marginRight: 8,
   },
   dropdownArrow: {
-    color: '#A0A0A0',
+    color: '#8B5CF6',
     fontSize: 12,
+    fontWeight: 'bold',
   },
   dropdownMenu: {
     position: 'absolute',
@@ -436,37 +332,26 @@ const styles = StyleSheet.create({
     backgroundColor: '#2D2D2D',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#3D3D3D',
+    borderColor: '#404040',
     marginTop: 4,
     maxHeight: 200,
-    zIndex: 1000,
-    elevation: 10,
+    zIndex: 1001,
     overflow: 'hidden',
   },
   dropdownItem: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#3D3D3D',
+    borderBottomColor: '#404040',
   },
   dropdownItemSelected: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#8B5CF620',
   },
   dropdownItemContent: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
     overflow: 'hidden',
-  },
-  dropdownItemText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    flex: 1,
-  },
-  dropdownItemTextSelected: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-    flex: 1,
   },
   registerItem: {
     flexDirection: 'row',
@@ -481,6 +366,16 @@ const styles = StyleSheet.create({
     marginRight: 10,
     borderWidth: 1,
     borderColor: '#3F3F46',
+  },
+  dropdownItemText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    flex: 1,
+  },
+  dropdownItemTextSelected: {
+    color: '#8B5CF6',
+    fontWeight: '600',
+    flex: 1,
   },
 });
 

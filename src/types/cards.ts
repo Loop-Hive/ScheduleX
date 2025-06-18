@@ -38,3 +38,10 @@ export interface SelectedDayCard {
   time: string;
   card: CardInterface[];
 }
+
+export interface AiCardInterface {
+  title: string;
+  days: Days;
+  target_percentage?: number;
+  tagColor?: string;
+}

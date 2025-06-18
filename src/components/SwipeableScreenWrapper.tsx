@@ -36,7 +36,7 @@ const SwipeableScreenWrapper: React.FC<SwipeableScreenWrapperProps> = ({
         // Also check if the swipe is not starting from the edges (to avoid conflicts with other gestures)
         const {locationX} = evt.nativeEvent;
         const isEdgeSwipe = locationX < 20 || locationX > width - 20;
-        
+
         return (
           !isEdgeSwipe &&
           Math.abs(gestureState.dx) > 30 &&
