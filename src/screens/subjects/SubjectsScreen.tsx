@@ -13,7 +13,7 @@ import {
 import MiniCard from '../../components/cards/MiniCard';
 import useStore from '../../store/store';
 import {CardInterface} from '../../types/cards';
-import Header from '../../components/layout/Header';
+import Header from '../../layout/Header';
 interface SubjectsScreenProps {
   toggleSidebar: () => void;
   handleMenuOpen: (r: number, c: number) => void;

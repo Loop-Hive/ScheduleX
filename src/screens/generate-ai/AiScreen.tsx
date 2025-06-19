@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import AiCard from '../../components/cards/AiCard';
 import {GoogleGenAI, Type} from '@google/genai';
-import DataLoader from '../../components/layout/Loader';
+import DataLoader from '../../layout/Loader';
 import pickCSVFile from '../../utils/csv-picker';
 import CSVTable from './components/CsvTable';
 import {GOOGLE_GEMINI_API_KEY} from '@env';

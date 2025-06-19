@@ -477,6 +477,7 @@ export const useStore = create<StoreState>()(
             limit: 0,
             limitType: 'with-absent',
           }));
+          console.log;
 
           return {
             registers: {

@@ -1,6 +1,7 @@
 import React from 'react';
 import {View, Text, StyleSheet, Image, TouchableOpacity} from 'react-native';
-
+import {useNavigation} from '@react-navigation/native';
+import {ChatIcon} from '../assets/icons/navigation/home';
 type Props = {
   toggler: () => void;
   changeStack: (type: string) => void;
@@ -8,21 +9,20 @@ type Props = {
 };
 
 const Header: React.FC<Props> = ({toggler, changeStack, registerName}) => {
+  const navigation = useNavigation();
   return (
     <View style={styles.header}>
       <View style={styles.headerContent}>
         <TouchableOpacity onPress={toggler}>
           <Image
-            source={require('../../assets/images/registers.png')}
+            source={require('../assets/images/registers.png')}
             style={styles.registerIcon}
           />
         </TouchableOpacity>
 
         <Text style={styles.registerNameTxt}>{registerName}</Text>
-        <TouchableOpacity
-          onPress={() => changeStack('Add')}
-          style={styles.addBtn}>
-          <Text style={styles.addBtnTxt}>Add</Text>
+        <TouchableOpacity onPress={() => navigation.navigate('Tasks' as never)}>
+          <ChatIcon width={35} height={35} />
         </TouchableOpacity>
       </View>
     </View>

@@ -1,6 +1,6 @@
 import React, {useState, useRef} from 'react';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
-import Sidebar from '../layout/Sidebar';
+import Sidebar from '../Sidebar';
 import TimeTableScreen from '../../screens/time-table/TimeTableScreen';
 import SubjectsScreen from '../../screens/subjects/SubjectsScreen';
 
