@@ -1,6 +1,15 @@
-import React, {useState} from 'react';
-import {View, StyleSheet, Text, TouchableOpacity, FlatList} from 'react-native';
-import Header from '../../components/layout/Header';
+import {useNavigation} from '@react-navigation/native';
+import React, {useState, useRef, useEffect} from 'react';
+import {
+  View,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  FlatList,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
 
 interface Task {
   id: number;
@@ -10,17 +19,15 @@ interface Task {
   priority: 'high' | 'medium' | 'low';
   dueDate: string;
   category: string;
+  timestamp: string;
 }
 
 interface TasksScreenProps {
-  toggleSidebar: () => void;
+  toggleSidebar?: () => void;
 }
 
-const TasksScreen: React.FC<TasksScreenProps> = ({
-  navigation,
-  toggleSidebar,
-}: any) => {
-  // Demo tasks data
+const TasksScreen: React.FC<TasksScreenProps> = ({}: any) => {
+  const navigation = useNavigation();
   const [tasks, setTasks] = useState<Task[]>([
     {
       id: 1,
@@ -30,6 +37,7 @@ const TasksScreen: React.FC<TasksScreenProps> = ({
       priority: 'high',
       dueDate: '2025-06-20',
       category: 'Assignment',
+      timestamp: '10:30 AM',
     },
     {
       id: 2,
@@ -39,6 +47,7 @@ const TasksScreen: React.FC<TasksScreenProps> = ({
       priority: 'medium',
       dueDate: '2025-06-19',
       category: 'Study',
+      timestamp: '11:45 AM',
     },
     {
       id: 3,
@@ -48,17 +57,42 @@ const TasksScreen: React.FC<TasksScreenProps> = ({
       priority: 'high',
       dueDate: '2025-06-21',
       category: 'Lab Report',
-    },
-    {
-      id: 4,
-      title: 'Read History Chapter',
-      description: 'Chapter 12: World War II',
-      completed: false,
-      priority: 'low',
-      dueDate: '2025-06-25',
-      category: 'Reading',
+      timestamp: '2:15 PM',
     },
   ]);
+
+  const [inputText, setInputText] = useState('');
+  const flatListRef = useRef<FlatList>(null);
+
+  useEffect(() => {
+    // Auto scroll to bottom when new tasks are added
+    if (tasks.length > 0) {
+      setTimeout(() => {
+        flatListRef.current?.scrollToEnd({animated: true});
+      }, 100);
+    }
+  }, [tasks.length]);
+
+  const addNewTask = () => {
+    if (inputText.trim()) {
+      const newTask: Task = {
+        id: Date.now(),
+        title: inputText.trim(),
+        description: '',
+        completed: false,
+        priority: 'medium',
+        dueDate: new Date().toISOString().split('T')[0],
+        category: 'Task',
+        timestamp: new Date().toLocaleTimeString('en-US', {
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true,
+        }),
+      };
+      setTasks(prev => [...prev, newTask]);
+      setInputText('');
+    }
+  };
 
   const toggleTaskCompletion = (taskId: number) => {
     setTasks(prevTasks =>
@@ -81,271 +115,237 @@ const TasksScreen: React.FC<TasksScreenProps> = ({
     }
   };
 
-  const getCategoryIcon = (category: string) => {
-    switch (category) {
-      case 'Assignment':
-        return '📝';
-      case 'Study':
-        return '📚';
-      case 'Lab Report':
-        return '🧪';
-      case 'Reading':
-        return '📖';
-      default:
-        return '📋';
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-    });
-  };
-
-  const renderTaskItem = ({item}: {item: Task}) => (
-    <TouchableOpacity
-      style={[styles.taskCard, item.completed && styles.completedTaskCard]}
-      onPress={() => toggleTaskCompletion(item.id)}>
-      <View style={styles.taskHeader}>
-        <View style={styles.taskLeft}>
+  const renderTaskMessage = ({item}: {item: Task}) => (
+    <View style={styles.messageContainer}>
+      <TouchableOpacity
+        style={[
+          styles.messageBubble,
+          item.completed && styles.completedMessageBubble,
+        ]}
+        onPress={() => toggleTaskCompletion(item.id)}>
+        <View style={styles.messageHeader}>
           <View style={[styles.checkbox, item.completed && styles.checkedBox]}>
             {item.completed && <Text style={styles.checkmark}>✓</Text>}
           </View>
-          <View style={styles.taskInfo}>
-            <Text
-              style={[
-                styles.taskTitle,
-                item.completed && styles.completedText,
-              ]}>
-              {item.title}
-            </Text>
-            <Text style={styles.taskDescription}>{item.description}</Text>
-          </View>
-        </View>
-        <View style={styles.taskRight}>
-          <Text style={styles.categoryIcon}>
-            {getCategoryIcon(item.category)}
+          <Text
+            style={[
+              styles.messageTitle,
+              item.completed && styles.completedText,
+            ]}>
+            {item.title}
           </Text>
         </View>
-      </View>
 
-      <View style={styles.taskFooter}>
-        <View style={styles.taskMeta}>
+        {item.description ? (
+          <Text style={styles.messageDescription}>{item.description}</Text>
+        ) : null}
+
+        <View style={styles.messageFooter}>
           <View
             style={[
-              styles.priorityBadge,
+              styles.priorityDot,
               {backgroundColor: getPriorityColor(item.priority)},
-            ]}>
-            <Text style={styles.priorityText}>
-              {item.priority.toUpperCase()}
-            </Text>
-          </View>
-          <Text style={styles.categoryText}>{item.category}</Text>
+            ]}
+          />
+          <Text style={styles.messageTime}>{item.timestamp}</Text>
         </View>
-        <Text style={styles.dueDate}>Due: {formatDate(item.dueDate)}</Text>
-      </View>
-    </TouchableOpacity>
+      </TouchableOpacity>
+    </View>
   );
 
-  const completedTasks = tasks.filter(task => task.completed);
-  const pendingTasks = tasks.filter(task => !task.completed);
-
   return (
-    <View style={styles.container}>
-      <Header
-        toggler={toggleSidebar}
-        changeStack={navigation.navigate}
-        registerName="Tasks"
-      />
-
-      <View style={styles.statsContainer}>
-        <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{pendingTasks.length}</Text>
-          <Text style={styles.statLabel}>Pending</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{completedTasks.length}</Text>
-          <Text style={styles.statLabel}>Completed</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{tasks.length}</Text>
-          <Text style={styles.statLabel}>Total</Text>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      {/* Chat Header */}
+      <View style={styles.chatHeader}>
+        <TouchableOpacity onPress={() => navigation.navigate('Tabs' as never)}>
+          <Text style={styles.backIcon}>←</Text>
+        </TouchableOpacity>
+        <View style={styles.headerInfo}>
+          <Text style={styles.headerTitle}>Task Manager</Text>
+          <Text style={styles.headerSubtitle}>
+            {tasks.filter(t => !t.completed).length} pending tasks
+          </Text>
         </View>
       </View>
 
-      {tasks.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyIcon}>✅</Text>
-          <Text style={styles.emptyTitle}>No Tasks Found</Text>
-          <Text style={styles.emptyText}>
-            Create tasks to stay organized and productive
-          </Text>
-        </View>
-      ) : (
-        <FlatList
-          data={tasks}
-          renderItem={renderTaskItem}
-          keyExtractor={item => item.id.toString()}
-          contentContainerStyle={styles.listContainer}
-          showsVerticalScrollIndicator={false}
+      {/* Messages List */}
+      <FlatList
+        ref={flatListRef}
+        data={tasks}
+        renderItem={renderTaskMessage}
+        keyExtractor={item => item.id.toString()}
+        contentContainerStyle={styles.messagesList}
+        showsVerticalScrollIndicator={false}
+      />
+
+      {/* Input Area */}
+      <View style={styles.inputContainer}>
+        <TextInput
+          style={styles.textInput}
+          value={inputText}
+          onChangeText={setInputText}
+          placeholder="Add a new task..."
+          placeholderTextColor="#9CA3AF"
+          multiline
+          onSubmitEditing={addNewTask}
         />
-      )}
-    </View>
+        <TouchableOpacity
+          style={[
+            styles.sendButton,
+            inputText.trim() && styles.sendButtonActive,
+          ]}
+          onPress={addNewTask}>
+          <Text style={styles.sendIcon}>→</Text>
+        </TouchableOpacity>
+      </View>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#18181B',
+    backgroundColor: '#0B0B0F',
   },
-  statsContainer: {
+  chatHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingVertical: 12,
+    backgroundColor: '#18181B',
+    borderBottomWidth: 1,
+    borderBottomColor: '#27272A',
+    paddingTop: Platform.OS === 'ios' ? 50 : 12,
   },
-  statCard: {
-    backgroundColor: '#27272A',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    flex: 1,
-    marginHorizontal: 4,
-    borderWidth: 1,
-    borderColor: '#3F3F46',
-  },
-  statNumber: {
+  backIcon: {
     fontSize: 24,
-    fontWeight: 'bold',
     color: '#6366F1',
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#9CA3AF',
-  },
-  listContainer: {
-    padding: 16,
-    paddingBottom: 100,
-  },
-  taskCard: {
-    backgroundColor: '#27272A',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#3F3F46',
-  },
-  completedTaskCard: {
-    opacity: 0.7,
-    backgroundColor: '#1F2937',
-  },
-  taskHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 12,
-  },
-  taskLeft: {
-    flexDirection: 'row',
-    flex: 1,
-    alignItems: 'flex-start',
-  },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 4,
-    borderWidth: 2,
-    borderColor: '#6B7280',
     marginRight: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 2,
   },
-  checkedBox: {
-    backgroundColor: '#10B981',
-    borderColor: '#10B981',
-  },
-  checkmark: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  taskInfo: {
+  headerInfo: {
     flex: 1,
   },
-  taskTitle: {
-    fontSize: 16,
+  headerTitle: {
+    fontSize: 18,
     fontWeight: '600',
     color: '#F3F4F6',
+  },
+  headerSubtitle: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginTop: 2,
+  },
+  messagesList: {
+    padding: 16,
+    paddingBottom: 20,
+  },
+  messageContainer: {
+    marginBottom: 12,
+    alignItems: 'flex-end',
+  },
+  messageBubble: {
+    backgroundColor: '#6366F1',
+    borderRadius: 18,
+    padding: 12,
+    maxWidth: '85%',
+    minWidth: '40%',
+  },
+  completedMessageBubble: {
+    backgroundColor: '#10B981',
+  },
+  messageHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 4,
+  },
+  checkbox: {
+    width: 16,
+    height: 16,
+    borderRadius: 3,
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+    marginRight: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkedBox: {
+    backgroundColor: '#FFFFFF',
+  },
+  checkmark: {
+    color: '#10B981',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  messageTitle: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#FFFFFF',
+    flex: 1,
   },
   completedText: {
     textDecorationLine: 'line-through',
-    color: '#9CA3AF',
+    opacity: 0.8,
   },
-  taskDescription: {
-    fontSize: 14,
-    color: '#9CA3AF',
-    lineHeight: 20,
+  messageDescription: {
+    fontSize: 13,
+    color: '#E5E7EB',
+    marginTop: 4,
+    lineHeight: 18,
   },
-  taskRight: {
-    marginLeft: 12,
-  },
-  categoryIcon: {
-    fontSize: 20,
-  },
-  taskFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  taskMeta: {
+  messageFooter: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'flex-end',
+    marginTop: 8,
   },
-  priorityBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 12,
+  priorityDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 6,
+  },
+  messageTime: {
+    fontSize: 11,
+    color: '#E5E7EB',
+    opacity: 0.8,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#18181B',
+    borderTopWidth: 1,
+    borderTopColor: '#27272A',
+  },
+  textInput: {
+    flex: 1,
+    backgroundColor: '#27272A',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    color: '#F3F4F6',
+    fontSize: 16,
+    maxHeight: 100,
     marginRight: 8,
   },
-  priorityText: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  categoryText: {
-    fontSize: 12,
-    color: '#9CA3AF',
-  },
-  dueDate: {
-    fontSize: 12,
-    color: '#9CA3AF',
-  },
-  emptyContainer: {
-    flex: 1,
+  sendButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#374151',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
   },
-  emptyIcon: {
-    fontSize: 64,
-    marginBottom: 16,
+  sendButtonActive: {
+    backgroundColor: '#6366F1',
   },
-  emptyTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#F3F4F6',
-    marginBottom: 8,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#9CA3AF',
-    textAlign: 'center',
+  sendIcon: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
 });
 

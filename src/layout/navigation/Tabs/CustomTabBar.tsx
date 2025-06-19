@@ -17,8 +17,8 @@ import {
   // TaskIcon,
   PlusIcon,
   ProfileIcon,
-} from '../../assets/icons/navigation/new';
-import FloatingActionModal from '../layout/FloatingActionModal';
+} from '../../../assets/icons/navigation/new';
+import FloatingActionModal from '../../FloatingActionModal';
 
 const {width} = Dimensions.get('window');
 const NORMAL_COLOR = '#9CA3AF';

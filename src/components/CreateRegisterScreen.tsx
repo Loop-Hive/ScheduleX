@@ -13,7 +13,7 @@ import {useStore} from '../store/store';
 
 const CreateRegisterScreen = () => {
   const [registerName, setRegisterName] = useState('');
-  const {addRegister, setActiveRegister} = useStore();
+  const {addRegister, setActiveRegister, registers} = useStore();
 
   const handleCreateRegister = () => {
     if (!registerName.trim()) {
@@ -21,9 +21,10 @@ const CreateRegisterScreen = () => {
       return;
     }
 
-    // Add the first register with ID 0
-    addRegister(0, registerName.trim());
-    setActiveRegister(0);
+    // Find the next available register ID
+    const newRegisterId = Object.keys(registers).length;
+    addRegister(newRegisterId, registerName.trim());
+    setActiveRegister(newRegisterId);
   };
 
   return (

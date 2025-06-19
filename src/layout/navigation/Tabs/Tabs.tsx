@@ -1,8 +1,8 @@
 import React, {useState, useRef} from 'react';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
-import Sidebar from '../layout/Sidebar';
-import TimeTableScreen from '../../screens/time-table/TimeTableScreen';
-import SubjectsScreen from '../../screens/subjects/SubjectsScreen';
+import Sidebar from '../../Sidebar';
+import TimeTableScreen from '../../../screens/time-table/TimeTableScreen';
+import SubjectsScreen from '../../../screens/subjects/SubjectsScreen';
 
 import {
   Animated,
@@ -11,10 +11,10 @@ import {
   TouchableOpacity,
   PanResponder,
 } from 'react-native';
-import HomeScreen from '../../screens/home/HomeScreen';
+import HomeScreen from '../../../screens/home/HomeScreen';
 import CardMenu from './CardMenu';
 import CustomTabBar from './CustomTabBar';
-import SettingsScreen from '../../screens/user-settings/SettingsScreen';
+import SettingsScreen from '../../../screens/user-settings/SettingsScreen';
 const {width} = Dimensions.get('window');
 
 type TabParamList = {

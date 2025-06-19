@@ -3,6 +3,8 @@ import {persist, createJSONStorage} from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {CardInterface, AiCardInterface} from '../types/cards';
 import {Tagcolors} from '../types/allCardConstraint';
+import {morningSchedule} from '../constants/morning';
+import {nightSchedule} from '../constants/night';
 
 interface Registers {
   [key: number]: {
@@ -47,10 +49,80 @@ interface StoreState {
   setRegisterColor: (registerId: number, color: string) => void;
 }
 
+// Helper function to create default registers
+const createDefaultRegisters = (): Registers => {
+  // Convert morning schedule to CardInterface with proper mutable types
+  const morningCards: CardInterface[] = morningSchedule.map((item, index) => ({
+    id: index,
+    title: item.title,
+    present: item.present,
+    total: item.total,
+    target_percentage: item.target_percentage,
+    tagColor: item.tagColor,
+    days: {
+      mon: [...item.days.mon],
+      tue: [...item.days.tue],
+      wed: [...item.days.wed],
+      thu: [...item.days.thu],
+      fri: [...item.days.fri],
+      sat: [...item.days.sat],
+      sun: [...item.days.sun],
+    },
+    markedAt: [...item.markedAt],
+    hasLimit: item.hasLimit,
+    limit: item.limit,
+    limitType: item.limitType,
+  }));
+
+  // Convert night schedule to CardInterface with proper mutable types
+  const nightCards: CardInterface[] = nightSchedule.map((item, index) => ({
+    id: index,
+    title: item.title,
+    present: item.present,
+    total: item.total,
+    target_percentage: item.target_percentage,
+    tagColor: item.tagColor,
+    days: {
+      mon: [...item.days.mon],
+      tue: [...item.days.tue],
+      wed: [...item.days.wed],
+      thu: [...item.days.thu],
+      fri: [...item.days.fri],
+      sat: [...item.days.sat],
+      sun: [...item.days.sun],
+    },
+    markedAt: [...item.markedAt],
+    hasLimit: item.hasLimit,
+    limit: item.limit,
+    limitType: item.limitType,
+  }));
+
+  return {
+    0: {
+      name: 'Default',
+      cards: [],
+      card_size: 'normal',
+      color: Tagcolors[0], // First color from palette
+    },
+    1: {
+      name: 'Morning Routine',
+      cards: morningCards,
+      card_size: 'normal',
+      color: Tagcolors[1], // Second color from palette
+    },
+    2: {
+      name: 'Evening Routine',
+      cards: nightCards,
+      card_size: 'normal',
+      color: Tagcolors[2], // Third color from palette
+    },
+  };
+};
+
 export const useStore = create<StoreState>()(
   persist(
     set => ({
-      registers: {},
+      registers: createDefaultRegisters(),
       activeRegister: 0,
       copyRegister: 0,
       updatedAt: null,
@@ -477,6 +549,7 @@ export const useStore = create<StoreState>()(
             limit: 0,
             limitType: 'with-absent',
           }));
+          console.log(newCards);
 
           return {
             registers: {

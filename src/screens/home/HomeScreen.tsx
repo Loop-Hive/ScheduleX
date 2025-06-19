@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import useStore from '../../store/store';
-import Header from '../../components/layout/Header';
+import Header from '../../layout/Header';
 import {CardInterface, Days, Slots} from '../../types/cards';
 import {convertToUTM} from '../../utils/functions';
 

@@ -327,7 +327,7 @@ const EditCard: React.FC = ({navigation, route}: any) => {
               };
 
               editCard(card_register, editedCard, card_id);
-              navigation.navigate('Tab');
+              navigation.navigate('App');
               if (Platform.OS === 'android') {
                 ToastAndroid.show('Changes Saved', ToastAndroid.SHORT);
               }

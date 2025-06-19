@@ -3,7 +3,7 @@ import {View, TouchableOpacity, StyleSheet, Text, Modal} from 'react-native';
 import {
   Tagcolors,
   getPreviewColorForBackground,
-} from '../../types/allCardConstraint';
+} from '../types/allCardConstraint';
 
 interface RegisterColorPickerProps {
   visible: boolean;
