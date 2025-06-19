@@ -13,7 +13,7 @@ const Header: React.FC<Props> = ({toggler, changeStack, registerName}) => {
       <View style={styles.headerContent}>
         <TouchableOpacity onPress={toggler}>
           <Image
-            source={require('../assets/images/registers.png')}
+            source={require('../../assets/images/registers.png')}
             style={styles.registerIcon}
           />
         </TouchableOpacity>

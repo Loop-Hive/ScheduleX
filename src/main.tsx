@@ -2,13 +2,13 @@ import React from 'react';
 import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 
-import Tabs from './Tabs/Tabs';
-import AddCard from './screens/AddCard';
-import EditCard from './screens/EditCard';
-import ViewCardDetails from './screens/ViewCardDetails';
-import AiScreen from './screens/AiScreen';
-import CreateRegisterScreen from './screens/CreateRegisterScreen';
+import Tabs from './components/Tabs/Tabs';
+import AddCard from './screens/add-card/AddCard';
+import EditCard from './screens/edit-card/EditCard';
+import ViewCardDetails from './screens/card-metrics/ViewCardDetails';
+import AiScreen from './screens/generate-ai/AiScreen';
 import {useStore} from './store/store';
+import CreateRegisterScreen from './components/CreateRegisterScreen';
 
 type RootStackParamList = {
   Tab: undefined;

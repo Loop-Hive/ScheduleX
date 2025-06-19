@@ -13,17 +13,17 @@ import {
   ToastAndroid,
   Switch,
 } from 'react-native';
-import useStore from '../store/store';
-import {Days, CardInterface, Slots, Markings} from '../types/cards';
+import useStore from '../../store/store';
+import {Days, CardInterface, Slots, Markings} from '../../types/cards';
 import {Picker} from '@react-native-picker/picker';
 import {
   convertTo24Hrs,
   convertToStartSeconds,
   convertToUTM,
-} from '../utils/functions';
+} from '../../utils/functions';
 // import Calendar from '../components/Calendar';
-import TimePicker from '../components/TimePicker';
-import TagColorPicker from '../components/TagColorPicker';
+import TimePicker from '../../components/TimePicker';
+import TagColorPicker from '../../components/TagColorPicker';
 // import {pick} from '@react-native-documents/picker';
 
 const daysOfWeek = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
@@ -354,7 +354,7 @@ const EditCard: React.FC = ({navigation, route}: any) => {
       <View style={styles.header}>
         <TouchableOpacity onPress={handleNavigateBack}>
           <Image
-            source={require('../assets/images/back-btn.png')}
+            source={require('../../assets/images/back-btn.png')}
             style={styles.iconsStyle}
           />
         </TouchableOpacity>
@@ -482,7 +482,7 @@ const EditCard: React.FC = ({navigation, route}: any) => {
                   style={styles.removeTimeBtn}
                   onPress={() => handleRemoveTime(day, dayTime)}>
                   <Image
-                    source={require('../assets/icons/remove-time-btn.png')}
+                    source={require('../../assets/icons/remove-time-btn.png')}
                     style={styles.remove_time_btn}
                   />
                 </TouchableOpacity>

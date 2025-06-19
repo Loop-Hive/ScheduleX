@@ -50,7 +50,7 @@ const CSVTable: React.FC<CSVTableProps> = ({tableData, setTableData}) => {
                 style={styles.deleteButton}
                 onPress={() => deleteRow(rowIndex - 1)}>
                 <Image
-                  source={require('../assets/icons/bin-red.png')}
+                  source={require('../../../assets/icons/bin-red.png')}
                   style={styles.redBinIcon}
                   resizeMode="contain"
                 />
@@ -69,7 +69,7 @@ const CSVTable: React.FC<CSVTableProps> = ({tableData, setTableData}) => {
                     style={styles.deleteButtonCol}
                     onPress={() => deleteColumn(colIndex)}>
                     <Image
-                      source={require('../assets/icons/bin-red.png')}
+                      source={require('../../../assets/icons/bin-red.png')}
                       style={styles.redBinIcon}
                       resizeMode="contain"
                     />

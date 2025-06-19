@@ -10,7 +10,7 @@ import {
   Image,
   // Dimensions,
 } from 'react-native';
-import useStore from '../store/store';
+import useStore from '../../store/store';
 
 interface CardMenuProps {
   isVisible: boolean;
@@ -130,14 +130,14 @@ const CardMenu: React.FC<CardMenuProps> = ({
         style={[styles.container, {transform: [{translateY: slideAnim}]}]}>
         <TouchableOpacity style={styles.button} onPress={handleEdit}>
           <Image
-            source={require('../assets/icons/card-menu/edit.png')}
+            source={require('../../assets/icons/card-menu/edit.png')}
             style={styles.editIcon}
           />
           <Text style={styles.buttonText}>Edit Subject</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.button} onPress={handleViewDetails}>
           <Image
-            source={require('../assets/icons/card-menu/report.png')}
+            source={require('../../assets/icons/card-menu/report.png')}
             style={styles.reportIcon}
           />
           <Text style={styles.buttonText}>View Details</Text>
@@ -145,14 +145,14 @@ const CardMenu: React.FC<CardMenuProps> = ({
 
         <TouchableOpacity style={styles.button} onPress={handleUndoChanges}>
           <Image
-            source={require('../assets/icons/card-menu/undo.png')}
+            source={require('../../assets/icons/card-menu/undo.png')}
             style={styles.undoIcon}
           />
           <Text style={styles.buttonText}>Undo Last Change</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.button} onPress={handleRemoveCard}>
           <Image
-            source={require('../assets/icons/card-menu/delete.png')}
+            source={require('../../assets/icons/card-menu/delete.png')}
             style={styles.deleteIcon}
           />
           <Text style={styles.buttonText}>Delete Subject</Text>

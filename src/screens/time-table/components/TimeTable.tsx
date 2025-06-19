@@ -9,7 +9,7 @@ import {
   Animated,
 } from 'react-native';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
-import {getTextColorForBackground} from '../types/allCardConstraint';
+import {getTextColorForBackground} from '../../../types/allCardConstraint';
 
 const {width: screenWidth, height: screenHeight} = Dimensions.get('window');
 

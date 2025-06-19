@@ -1,12 +1,15 @@
 import React from 'react';
 import {View, ActivityIndicator, StyleSheet, ColorValue} from 'react-native';
 
-interface LoaderProps {
+interface DataLoaderProps {
   size?: number | 'small' | 'large';
   color?: ColorValue;
 }
 
-const Loader: React.FC<LoaderProps> = ({size = 'large', color = '#007bff'}) => {
+const DataLoader: React.FC<DataLoaderProps> = ({
+  size = 'large',
+  color = '#007bff',
+}) => {
   return (
     <View style={styles.container}>
       <ActivityIndicator size={size} color={color} />
@@ -22,4 +25,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default Loader;
+export default DataLoader;

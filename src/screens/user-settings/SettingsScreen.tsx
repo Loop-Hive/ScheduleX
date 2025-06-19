@@ -9,7 +9,7 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
-import useStore from '../store/store';
+import useStore from '../../store/store';
 
 const SettingsScreen: React.FC = () => {
   const {defaultTargetPercentage, registers, activeRegister} = useStore();
@@ -63,7 +63,7 @@ const SettingsScreen: React.FC = () => {
       <View style={styles.contentContainer}>
         <View style={styles.headerContainer}>
           <Image
-            source={require('../assets/icons/navigation/settings.png')}
+            source={require('../../assets/icons/navigation/settings.png')}
             style={styles.headerIcon}
           />
           <Text style={styles.headerText}>Settings</Text>

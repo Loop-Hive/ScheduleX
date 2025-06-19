@@ -1,6 +1,6 @@
 import React, {useState, useEffect} from 'react';
-import Card from '../components/cards/Card';
-import Spacer from '../components/Spacer';
+import Card from '../../components/cards/Card';
+import Spacer from '../../components/Spacer';
 import {
   View,
   StyleSheet,
@@ -10,16 +10,16 @@ import {
   TouchableOpacity,
   Image,
 } from 'react-native';
-import MiniCard from '../components/cards/MiniCard';
-import useStore from '../store/store';
-import {CardInterface} from '../types/cards';
-import Header from '../components/Header';
-interface HomeScreenProps {
+import MiniCard from '../../components/cards/MiniCard';
+import useStore from '../../store/store';
+import {CardInterface} from '../../types/cards';
+import Header from '../../components/layout/Header';
+interface SubjectsScreenProps {
   toggleSidebar: () => void;
   handleMenuOpen: (r: number, c: number) => void;
 }
 
-const HomeScreen: React.FC<HomeScreenProps> = ({
+const SubjectsScreen: React.FC<SubjectsScreenProps> = ({
   navigation,
   toggleSidebar,
   handleMenuOpen,
@@ -59,7 +59,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         <View style={styles.emptyContainer}>
           <TouchableOpacity onPress={() => navigation.navigate('Add')}>
             <Image
-              source={require('../assets/images/add-icon.png')}
+              source={require('../../assets/images/add-icon.png')}
               style={styles.addIcon}
             />
           </TouchableOpacity>
@@ -156,7 +156,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  homeScreen: {
+  SubjectsScreen: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
@@ -239,4 +239,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default HomeScreen;
+export default SubjectsScreen;

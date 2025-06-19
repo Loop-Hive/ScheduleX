@@ -1,6 +1,9 @@
 import React from 'react';
 import {View, TouchableOpacity, StyleSheet, Text, Modal} from 'react-native';
-import {Tagcolors, getPreviewColorForBackground} from '../types/allCardConstraint';
+import {
+  Tagcolors,
+  getPreviewColorForBackground,
+} from '../../types/allCardConstraint';
 
 interface RegisterColorPickerProps {
   visible: boolean;
@@ -30,9 +33,7 @@ const RegisterColorPicker: React.FC<RegisterColorPickerProps> = ({
       onRequestClose={onClose}>
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
-          <Text style={styles.title}>
-            Choose color for "{registerName}"
-          </Text>
+          <Text style={styles.title}>Choose color for "{registerName}"</Text>
           <Text style={styles.subtitle}>
             Select a color theme for this register
           </Text>

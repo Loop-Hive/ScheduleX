@@ -9,14 +9,14 @@ import {
   Alert,
   TouchableOpacity,
 } from 'react-native';
-import AiCard from '../components/cards/AiCard';
+import AiCard from '../../components/cards/AiCard';
 import {GoogleGenAI, Type} from '@google/genai';
-import Loader from '../components/Loader';
-import pickCSVFile from '../utils/csv-picker';
-import CSVTable from '../components/CsvTable';
+import DataLoader from '../../components/layout/Loader';
+import pickCSVFile from '../../utils/csv-picker';
+import CSVTable from './components/CsvTable';
 import {GOOGLE_GEMINI_API_KEY} from '@env';
-import {formatTimetableToMarkdown} from '../utils/ArrayFormatter';
-import {useStore} from '../store/store';
+import {formatTimetableToMarkdown} from '../../utils/ArrayFormatter';
+import {useStore} from '../../store/store';
 // import {G} from 'react-native-svg';
 
 interface Slots {
@@ -265,7 +265,7 @@ const AiScreen: React.FC = () => {
       <View style={styles.contentContainer2}>
         <View style={styles.aiBox}>
           <Image
-            source={require('../assets/icons/navigation/ai.png')}
+            source={require('../../assets/icons/navigation/ai.png')}
             style={styles.aiIcon}
           />
 
@@ -297,7 +297,7 @@ const AiScreen: React.FC = () => {
             </TouchableOpacity>
           </View>
         ) : loading ? (
-          <Loader size="large" color="#ffffff" />
+          <DataLoader size="large" color="#ffffff" />
         ) : (
           <View style={styles.AcRjBtn}>
             <TouchableOpacity
@@ -332,7 +332,7 @@ const AiScreen: React.FC = () => {
           ) : (
             <View style={styles.aiContainer}>
               <Image
-                source={require('../assets/images/ai-magic.png')}
+                source={require('../../assets/images/ai-magic.png')}
                 style={styles.magicImage}
               />
               <Text style={styles.aiheading}>

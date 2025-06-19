@@ -10,10 +10,10 @@ import {
   ToastAndroid,
   Image,
 } from 'react-native';
-import useStore from '../store/store';
-import {CardInterface} from '../types/cards';
-import Calendar from '../components/Calendar';
-import {convertToUTM, formatToHHMM} from '../utils/functions';
+import useStore from '../../store/store';
+import {CardInterface} from '../../types/cards';
+import Calendar from '../../components/Calendar';
+import {convertToUTM, formatToHHMM} from '../../utils/functions';
 import {TextInput} from 'react-native-gesture-handler';
 
 const ViewCardDetails: React.FC = ({navigation, route}: any) => {
@@ -147,7 +147,7 @@ const ViewCardDetails: React.FC = ({navigation, route}: any) => {
       <View style={styles.header}>
         <TouchableOpacity onPress={handleNavigateBack}>
           <Image
-            source={require('../assets/images/back-btn.png')}
+            source={require('../../assets/images/back-btn.png')}
             style={styles.backBtnIcon}
           />
         </TouchableOpacity>
@@ -160,7 +160,7 @@ const ViewCardDetails: React.FC = ({navigation, route}: any) => {
           onPress={handleTodayClick}
           style={styles.todayContainer}>
           <Image
-            source={require('../assets/images/today.png')}
+            source={require('../../assets/images/today.png')}
             style={styles.todayIcon}
           />
         </TouchableOpacity>

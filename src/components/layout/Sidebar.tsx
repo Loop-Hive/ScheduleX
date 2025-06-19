@@ -11,7 +11,7 @@ import {
   Alert,
   TextInput,
 } from 'react-native';
-import useStore from '../store/store';
+import useStore from '../../store/store';
 import RegisterColorPicker from './RegisterColorPicker';
 
 type RegisterProps = {
@@ -149,12 +149,12 @@ const Register: React.FC<RegisterProps> = ({
       <TouchableOpacity style={styles.menu} onPress={handleMenuOrRename}>
         {isEditable ? (
           <Image
-            source={require('../assets/icons/mark-present.png')}
+            source={require('../../assets/icons/mark-present.png')}
             style={styles.markPresentIcon}
           />
         ) : (
           <Image
-            source={require('../assets/icons/three-dot.png')}
+            source={require('../../assets/icons/three-dot.png')}
             style={styles.threeDotsIcon}
           />
         )}
@@ -184,7 +184,7 @@ const Register: React.FC<RegisterProps> = ({
                 style={styles.dropdownItem}
                 onPress={handleRename}>
                 <Image
-                  source={require('../assets/icons/dropDownMenu/rename.png')}
+                  source={require('../../assets/icons/dropDownMenu/rename.png')}
                   style={styles.renameIcon}
                 />
               </TouchableOpacity>
@@ -202,7 +202,7 @@ const Register: React.FC<RegisterProps> = ({
                 style={styles.dropdownItem}
                 onPress={handleClearCards}>
                 <Image
-                  source={require('../assets/icons/dropDownMenu/clear.png')}
+                  source={require('../../assets/icons/dropDownMenu/clear.png')}
                   style={styles.clearIcon}
                 />
               </TouchableOpacity>
@@ -210,7 +210,7 @@ const Register: React.FC<RegisterProps> = ({
                 style={styles.dropdownItem}
                 onPress={handleRegisterDelete}>
                 <Image
-                  source={require('../assets/icons/dropDownMenu/delete.png')}
+                  source={require('../../assets/icons/dropDownMenu/delete.png')}
                   style={styles.deleteIcon}
                 />
               </TouchableOpacity>
@@ -300,7 +300,7 @@ const Sidebar: React.FC = () => {
           onPress={handleAddRegister}>
           <Text style={styles.mainText}>Add</Text>
           <Image
-            source={require('../assets/icons/add-register.png')}
+            source={require('../../assets/icons/add-register.png')}
             style={styles.addRegisterIcon}
           />
         </TouchableOpacity>
