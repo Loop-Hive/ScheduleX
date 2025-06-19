@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import useStore from '../../store/store';
 import RegisterColorPicker from './RegisterColorPicker';
+import {getPreviewColorForBackground} from '../../types/allCardConstraint';
 
 type RegisterProps = {
   name: string;
@@ -52,6 +53,11 @@ const Register: React.FC<RegisterProps> = ({
   };
 
   const handleActiveRegister = () => {
+    // Don't activate register if color picker was clicked
+    if (colorPickerClickedRef.current) {
+      colorPickerClickedRef.current = false;
+      return;
+    }
     if (isEditable) {
       return;
     }
@@ -60,6 +66,7 @@ const Register: React.FC<RegisterProps> = ({
   const [displayName, setDisplayName] = useState(name);
   const [isEditable, setIsEditable] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
+  const colorPickerClickedRef = useRef(false);
 
   const handleRegisterDelete = () => {
     Alert.alert(
@@ -91,8 +98,12 @@ const Register: React.FC<RegisterProps> = ({
   };
 
   const handleColorPicker = () => {
+    colorPickerClickedRef.current = true;
     setShowColorPicker(true);
-    toggleDropdown();
+    // Close dropdown if it's open
+    if (isDropdownOpen) {
+      setIsDropdownOpen(false);
+    }
   };
 
   const handleColorSelect = (color: string) => {
@@ -137,7 +148,7 @@ const Register: React.FC<RegisterProps> = ({
   };
   useEffect(() => {
     Animated.timing(dropdownHeight, {
-      toValue: isDropdownOpen ? 56 : 0, // Increased height for 4 items
+      toValue: isDropdownOpen ? 42 : 0, // Height for 3 items
       duration: 150,
       easing: Easing.out(Easing.ease),
       useNativeDriver: false,
@@ -166,7 +177,20 @@ const Register: React.FC<RegisterProps> = ({
           isActive && styles.activeRegisterButton, // Style for active register
         ]}
         onPress={handleActiveRegister}>
-        <Text style={styles.emojiText}>📝</Text>
+        <TouchableOpacity
+          onPress={handleColorPicker}
+          activeOpacity={0.7}>
+          <View
+            style={[
+              styles.registerColorIndicator,
+              {
+                backgroundColor: getPreviewColorForBackground(
+                  registers[index]?.color || '#FFFFFF',
+                ),
+              },
+            ]}
+          />
+        </TouchableOpacity>
         <TextInput
           value={displayName}
           editable={isEditable}
@@ -186,16 +210,6 @@ const Register: React.FC<RegisterProps> = ({
                 <Image
                   source={require('../../assets/icons/dropDownMenu/rename.png')}
                   style={styles.renameIcon}
-                />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={handleColorPicker}>
-                <View
-                  style={[
-                    styles.colorIndicator,
-                    {backgroundColor: registers[index]?.color || '#FFFFFF'},
-                  ]}
                 />
               </TouchableOpacity>
               <TouchableOpacity
@@ -392,10 +406,21 @@ const styles = StyleSheet.create({
     flexShrink: 1, // Allows the text to shrink to fit the available space
     overflow: 'hidden', // Hides any overflowing content
   },
-  emojiText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: 'bold',
+  registerColorIndicator: {
+    width: 18,
+    height: 22,
+    borderRadius: 4,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: '#3F3F46',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
+    elevation: 3,
   },
   mainText: {
     color: '#fff',
