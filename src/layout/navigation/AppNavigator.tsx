@@ -1,9 +1,9 @@
 import React from 'react';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
-import AddCard from '../screens/add-card/AddCard';
-import EditCard from '../screens/edit-card/EditCard';
-import ViewCardDetails from '../screens/card-metrics/ViewCardDetails';
-import AiScreen from '../screens/generate-ai/AiScreen';
+import AddCard from '../../screens/add-card/AddCard';
+import EditCard from '../../screens/edit-card/EditCard';
+import ViewCardDetails from '../../screens/card-metrics/ViewCardDetails';
+import AiScreen from '../../screens/generate-ai/AiScreen';
 import {NavigationContainer} from '@react-navigation/native';
 import MaterialTopTabsNavigator from './MaterialTopTabsNavigation';
 

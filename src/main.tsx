@@ -1,8 +1,8 @@
 import React from 'react';
 import {useStore} from './store/store';
 import CreateRegisterScreen from './components/CreateRegisterScreen';
-import MaterialTopTabsNavigator from './navigation/MaterialTopTabsNavigation';
-import AppNavigator from './navigation/AppNavigator';
+import MaterialTopTabsNavigator from './layout/navigation/MaterialTopTabsNavigation';
+import AppNavigator from './layout/navigation/AppNavigator';
 
 const MainApp = () => {
   const {registers} = useStore();

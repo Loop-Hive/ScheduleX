@@ -313,7 +313,7 @@ const AddCard: React.FC = ({navigation}: any) => {
     };
     addCard(activeRegister, markedCard);
 
-    navigation.navigate('Tab');
+    navigation.navigate('App');
     if (Platform.OS === 'android') {
       ToastAndroid.show('New Course Added', ToastAndroid.SHORT);
     }

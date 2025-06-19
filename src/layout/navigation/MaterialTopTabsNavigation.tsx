@@ -3,8 +3,8 @@ import {StyleSheet} from 'react-native';
 import {createMaterialTopTabNavigator} from '@react-navigation/material-top-tabs';
 import {NavigationContainer} from '@react-navigation/native';
 import AppNavigator from './AppNavigator';
-import TasksScreen from '../screens/tasks-chat/TasksScreen';
-import Tabs from '../layout/Tabs/Tabs';
+import TasksScreen from '../../screens/tasks-chat/TasksScreen';
+import Tabs from './Tabs/Tabs';
 const Tab = createMaterialTopTabNavigator();
 
 const MaterialTopTabsNavigator: React.FC = () => {

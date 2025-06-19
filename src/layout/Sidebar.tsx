@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import useStore from '../store/store';
 import RegisterColorPicker from './RegisterColorPicker';
-import {getPreviewColorForBackground} from '../../types/allCardConstraint';
+import {getPreviewColorForBackground} from '../types/allCardConstraint';
 
 type RegisterProps = {
   name: string;
@@ -177,9 +177,7 @@ const Register: React.FC<RegisterProps> = ({
           isActive && styles.activeRegisterButton, // Style for active register
         ]}
         onPress={handleActiveRegister}>
-        <TouchableOpacity
-          onPress={handleColorPicker}
-          activeOpacity={0.7}>
+        <TouchableOpacity onPress={handleColorPicker} activeOpacity={0.7}>
           <View
             style={[
               styles.registerColorIndicator,

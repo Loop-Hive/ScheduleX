@@ -33,6 +33,7 @@ const styles = StyleSheet.create({
   header: {
     width: '100%',
     backgroundColor: '#18181B',
+    paddingVertical: 10,
   },
   registerIcon: {width: 42, height: 42},
   headerContent: {

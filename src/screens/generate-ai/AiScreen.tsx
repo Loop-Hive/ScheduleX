@@ -125,7 +125,7 @@ const AiScreen: React.FC = () => {
     try {
       const ai = new GoogleGenAI({apiKey: GOOGLE_GEMINI_API_KEY.toString()});
       const aiResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-preview-04-17',
+        model: 'gemini-2.5-flash',
         contents: userPrompt,
         config: {
           responseMimeType: 'application/json',
@@ -210,6 +210,7 @@ const AiScreen: React.FC = () => {
         throw new Error('Invalid response format');
       }
     } catch (error) {
+      console.error('Error generating AI content:', error);
       Alert.alert('Error', 'Something went wrong.');
     } finally {
       setLoading(false);
