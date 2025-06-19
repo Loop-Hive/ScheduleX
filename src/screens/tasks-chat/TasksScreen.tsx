@@ -1,6 +1,6 @@
 import React, {useState} from 'react';
 import {View, StyleSheet, Text, TouchableOpacity, FlatList} from 'react-native';
-import Header from '../components/Header';
+import Header from '../../components/layout/Header';
 
 interface Task {
   id: number;

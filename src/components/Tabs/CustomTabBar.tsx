@@ -6,7 +6,6 @@ import {
   Animated,
   Dimensions,
   Text,
-  PanResponder,
 } from 'react-native';
 import {BottomTabBarProps} from '@react-navigation/bottom-tabs';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -15,24 +14,19 @@ import {
   HomeIcon,
   ScheduleIcon,
   SubjectIcon,
-  TaskIcon,
+  // TaskIcon,
   PlusIcon,
-} from '../assets/icons/navigation/new';
-import FloatingActionModal from './FloatingActionModal';
+  ProfileIcon,
+} from '../../assets/icons/navigation/new';
+import FloatingActionModal from '../layout/FloatingActionModal';
 
 const {width} = Dimensions.get('window');
 const NORMAL_COLOR = '#9CA3AF';
 const ACTIVE_COLOR = '#6366F1';
 
-interface CustomSwipeTabBarProps extends BottomTabBarProps {
-  onSwipeChange?: (direction: 'left' | 'right') => void;
-}
+interface CustomTabBarProps extends BottomTabBarProps {}
 
-const CustomSwipeTabBar: React.FC<CustomSwipeTabBarProps> = ({
-  state,
-  navigation,
-  onSwipeChange,
-}) => {
+const CustomTabBar: React.FC<CustomTabBarProps> = ({state, navigation}) => {
   const insets = useSafeAreaInsets();
   const [footerWidth, setFooterWidth] = useState(0);
   const [modalVisible, setModalVisible] = useState(false);
@@ -88,39 +82,13 @@ const CustomSwipeTabBar: React.FC<CustomSwipeTabBarProps> = ({
     {name: 'Home', icon: HomeIcon, label: 'Home'},
     {name: 'Schedule', icon: ScheduleIcon, label: 'Schedule'},
     {name: 'Subjects', icon: SubjectIcon, label: 'Subjects'},
-    {name: 'Tasks', icon: TaskIcon, label: 'Tasks'},
+    {name: 'Settings', icon: ProfileIcon, label: 'Settings'},
   ];
 
   const rotateInterpolate = plusRotation.interpolate({
     inputRange: [0, 1],
     outputRange: ['0deg', '45deg'],
   });
-
-  // PanResponder for swipe gestures
-  const panResponder = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (evt, gestureState) => {
-        return Math.abs(gestureState.dx) > 10 && Math.abs(gestureState.dy) < 50;
-      },
-      onPanResponderMove: () => {},
-      onPanResponderRelease: (evt, gestureState) => {
-        const threshold = width * 0.2;
-        const {dx, vx} = gestureState;
-
-        if (Math.abs(dx) > threshold || Math.abs(vx) > 0.5) {
-          if (dx > 0 && state.index > 0) {
-            // Swipe right - go to previous tab
-            navigation.navigate(tabRoutes[state.index - 1].name);
-            onSwipeChange?.('right');
-          } else if (dx < 0 && state.index < tabRoutes.length - 1) {
-            // Swipe left - go to next tab
-            navigation.navigate(tabRoutes[state.index + 1].name);
-            onSwipeChange?.('left');
-          }
-        }
-      },
-    }),
-  ).current;
 
   const handleTabPress = (routeName: string) => {
     const event = navigation.emit({
@@ -135,7 +103,7 @@ const CustomSwipeTabBar: React.FC<CustomSwipeTabBarProps> = ({
   };
 
   const handlePlusPress = () => {
-    setModalVisible(true);
+    setModalVisible(!modalVisible);
   };
 
   const handleModalClose = () => {
@@ -162,9 +130,7 @@ const CustomSwipeTabBar: React.FC<CustomSwipeTabBarProps> = ({
 
   return (
     <>
-      <View
-        style={[styles.navigationBar, {paddingBottom: insets.bottom}]}
-        {...panResponder.panHandlers}>
+      <View style={[styles.navigationBar, {paddingBottom: insets.bottom}]}>
         <Animated.View
           style={styles.footer}
           onLayout={event => {
@@ -255,11 +221,11 @@ const CustomSwipeTabBar: React.FC<CustomSwipeTabBarProps> = ({
 
           {/* Tasks Tab */}
           <TouchableOpacity
-            onPress={() => handleTabPress('Tasks')}
+            onPress={() => handleTabPress('Settings')}
             style={styles.tabButton}
             activeOpacity={0.7}>
             <View style={styles.tabContent}>
-              <TaskIcon
+              <ProfileIcon
                 width={24}
                 height={24}
                 color={state.index === 3 ? ACTIVE_COLOR : NORMAL_COLOR}
@@ -269,7 +235,7 @@ const CustomSwipeTabBar: React.FC<CustomSwipeTabBarProps> = ({
                   styles.tabLabel,
                   {color: state.index === 3 ? ACTIVE_COLOR : NORMAL_COLOR},
                 ]}>
-                Tasks
+                Settings
               </Text>
             </View>
           </TouchableOpacity>
@@ -412,4 +378,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default CustomSwipeTabBar;
+export default CustomTabBar;

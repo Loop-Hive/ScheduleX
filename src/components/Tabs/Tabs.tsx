@@ -1,10 +1,8 @@
 import React, {useState, useRef} from 'react';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
-import Sidebar from '../components/Sidebar';
-import TimeTableScreen from '../screens/TimeTableScreen';
-import SubjectsScreen from '../screens/SubjectsScreen';
-import TasksScreen from '../screens/TasksScreen';
-import SwipeableScreenWrapper from '../components/SwipeableScreenWrapper';
+import Sidebar from '../layout/Sidebar';
+import TimeTableScreen from '../../screens/time-table/TimeTableScreen';
+import SubjectsScreen from '../../screens/subjects/SubjectsScreen';
 
 import {
   Animated,
@@ -13,16 +11,17 @@ import {
   TouchableOpacity,
   PanResponder,
 } from 'react-native';
-import CustomSwipeTabBar from '../components/CustomSwipeTabBar';
-import HomeScreen from '../screens/HomeScreen';
-import CardMenu from '../components/CardMenu';
+import HomeScreen from '../../screens/home/HomeScreen';
+import CardMenu from './CardMenu';
+import CustomTabBar from './CustomTabBar';
+import SettingsScreen from '../../screens/user-settings/SettingsScreen';
 const {width} = Dimensions.get('window');
 
 type TabParamList = {
   Home: undefined;
   Schedule: undefined;
   Subjects: undefined;
-  Tasks: undefined;
+  Settings: undefined;
 };
 const Tab = createBottomTabNavigator<TabParamList>();
 
@@ -35,10 +34,7 @@ const Tabs: React.FC = ({navigation}: any) => {
 
   const sidebarTranslate = useRef(new Animated.Value(-width * 0.76)).current;
 
-  // Define tab routes for swipe navigation
-  const tabRoutes = ['Home', 'Schedule', 'Subjects', 'Tasks'];
-
-  const renderCustomTabBar = (props: any) => <CustomSwipeTabBar {...props} />;
+  const renderCustomTabBar = (props: any) => <CustomTabBar {...props} />;
 
   const CloseCardMenu = () => {
     setRegisterId(-1);
@@ -113,40 +109,28 @@ const Tabs: React.FC = ({navigation}: any) => {
         }}>
         <Tab.Screen name="Home">
           {props => (
-            <SwipeableScreenWrapper tabRoutes={tabRoutes}>
-              <HomeScreen
-                {...props}
-                toggleSidebar={openSidebar}
-                handleMenuOpen={handleMenuOpen}
-              />
-            </SwipeableScreenWrapper>
+            <HomeScreen
+              {...props}
+              toggleSidebar={openSidebar}
+              handleMenuOpen={handleMenuOpen}
+            />
           )}
         </Tab.Screen>
         <Tab.Screen name="Schedule">
           {props => (
-            <SwipeableScreenWrapper tabRoutes={tabRoutes}>
-              <TimeTableScreen {...props} handleMenuOpen={handleMenuOpen} />
-            </SwipeableScreenWrapper>
+            <TimeTableScreen {...props} handleMenuOpen={handleMenuOpen} />
           )}
         </Tab.Screen>
         <Tab.Screen name="Subjects">
           {props => (
-            <SwipeableScreenWrapper tabRoutes={tabRoutes}>
-              <SubjectsScreen
-                {...props}
-                toggleSidebar={openSidebar}
-                handleMenuOpen={handleMenuOpen}
-              />
-            </SwipeableScreenWrapper>
+            <SubjectsScreen
+              {...props}
+              toggleSidebar={openSidebar}
+              handleMenuOpen={handleMenuOpen}
+            />
           )}
         </Tab.Screen>
-        <Tab.Screen name="Tasks">
-          {props => (
-            <SwipeableScreenWrapper tabRoutes={tabRoutes}>
-              <TasksScreen {...props} toggleSidebar={openSidebar} />
-            </SwipeableScreenWrapper>
-          )}
-        </Tab.Screen>
+        <Tab.Screen name="Settings">{props => <SettingsScreen />}</Tab.Screen>
       </Tab.Navigator>
       {/* SIDEBAR  */}
       <Animated.View
