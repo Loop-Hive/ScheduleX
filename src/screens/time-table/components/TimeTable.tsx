@@ -7,9 +7,14 @@ import {
   TouchableOpacity,
   Dimensions,
   Animated,
+  Image,
 } from 'react-native';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import {getTextColorForBackground} from '../../../types/allCardConstraint';
+
+// Import arrow images
+const upArrowImage = require('../../../assets/icons/up-arrow.png');
+const downArrowImage = require('../../../assets/icons/down-arrow.png');
 
 const {width: screenWidth, height: screenHeight} = Dimensions.get('window');
 
@@ -43,8 +48,12 @@ const TimeTable: React.FC<TimeTableProps> = ({
     null,
   ); // Track clicked subject
   const [hasAutoScrolled, setHasAutoScrolled] = useState(false); // Track if we've already auto-scrolled
+  const [scrollY, setScrollY] = useState(0); // Track current scroll position
+  const [showScrollToNow, setShowScrollToNow] = useState(false); // Show "scroll to now" button
+  const [currentTimeDirection, setCurrentTimeDirection] = useState<'up' | 'down'>('down'); // Where current time is relative to viewport
   const scrollViewRef = useRef<ScrollView>(null);
   const currentTimeLineY = useRef(new Animated.Value(0)).current;
+  const isScrollingToCurrentTime = useRef(false); // Track if currently scrolling to prevent double animations
 
   // Days of the week with full names
   const getAllDays = () => [
@@ -132,12 +141,48 @@ const TimeTable: React.FC<TimeTableProps> = ({
     }).start();
   }, [currentTime, currentTimeLineY]);
 
-  // Auto-scroll to current time only on initial mount and day changes
+  // Auto-scroll logic for day changes
   useEffect(() => {
-    if (selectedDay === new Date().getDay() && !hasAutoScrolled) {
-      const hour = new Date().getHours();
-      const scrollPosition = Math.max(0, (hour - 2) * 80); // Show 2 hours before current
+    if (!hasAutoScrolled) {
+      const isToday = selectedDay === new Date().getDay();
+      let scrollPosition = 0;
 
+      if (isToday) {
+        // For Today tab: scroll to show current time with exactly 1 hour of space above it
+        // This matches Google Calendar's positioning and creates consistency with other day tabs
+        const currentTime = new Date();
+        const hour = currentTime.getHours();
+        const minutes = currentTime.getMinutes();
+        const currentTimePosition = (hour + minutes / 60) * 80;
+        // Show exactly 1 hour before current time (consistent with other day behavior)
+        scrollPosition = Math.max(0, currentTimePosition - 80);
+      } else {
+        // For other days: scroll to first subject of the day
+        const daySubjects = subjects.filter(
+          subject => subject.dayOfWeek === selectedDay,
+        );
+
+        if (daySubjects.length > 0) {
+          // Find the earliest subject for this day by comparing start times
+          const earliestSubject = daySubjects.reduce((earliest, current) => {
+            const earliestTime = earliest.startTime.split(':').map(Number);
+            const currentTime = current.startTime.split(':').map(Number);
+            const earliestMinutes = earliestTime[0] * 60 + earliestTime[1];
+            const currentMinutes = currentTime[0] * 60 + currentTime[1];
+
+            return currentMinutes < earliestMinutes ? current : earliest;
+          });
+
+          // Calculate scroll position to show the earliest subject
+          const [hours, minutes] = earliestSubject.startTime.split(':').map(Number);
+          const subjectPosition = (hours + minutes / 60) * 80;
+          // Scroll to show 1 hour before the first subject (or to top if subject is too early)
+          scrollPosition = Math.max(0, subjectPosition - 80);
+        }
+        // If no subjects for this day, scrollPosition remains 0 (top of schedule)
+      }
+
+      // Apply scroll with a small delay to ensure the component is fully rendered
       setTimeout(() => {
         scrollViewRef.current?.scrollTo({
           y: scrollPosition,
@@ -146,12 +191,101 @@ const TimeTable: React.FC<TimeTableProps> = ({
         setHasAutoScrolled(true);
       }, 100);
     }
-  }, [selectedDay, hasAutoScrolled]);
+  }, [selectedDay, hasAutoScrolled, subjects]);
 
-  // Reset auto-scroll flag when day changes
+  // Reset auto-scroll flag and arrow state when day changes
   useEffect(() => {
     setHasAutoScrolled(false);
+    setShowScrollToNow(false); // Reset arrow state immediately when switching days
+    setCurrentTimeDirection('down'); // Reset arrow direction to default
   }, [selectedDay]);
+
+  // Calculate current time position and detect if user scrolled away (only for Today tab)
+  useEffect(() => {
+    const isToday = selectedDay === new Date().getDay();
+    if (!isToday) {
+      setShowScrollToNow(false);
+      return;
+    }
+
+    // Only show after initial auto-scroll has happened
+    if (!hasAutoScrolled) {
+      setShowScrollToNow(false);
+      return;
+    }
+
+    // Add a small delay to ensure scroll position has stabilized after auto-scroll
+    const timeoutId = setTimeout(() => {
+      // Don't show button if currently performing a scroll-to-current-time action
+      if (isScrollingToCurrentTime.current) {
+        return;
+      }
+
+      const now = new Date();
+      const hour = now.getHours();
+      const minutes = now.getMinutes();
+      const currentTimePosition = (hour + minutes / 60) * 80;
+
+      // Calculate visible viewport (accounting for day tabs, header, and bottom tab bar)
+      const viewportTop = scrollY;
+      const viewportHeight = screenHeight - 150; // More accurate accounting for UI elements
+      const viewportBottom = scrollY + viewportHeight;
+
+      // Add some margin to avoid showing button when current time is barely out of view
+      const margin = 20; // 20px margin for better UX
+      const isCurrentTimeOutOfView =
+        currentTimePosition < (viewportTop - margin) ||
+        currentTimePosition > (viewportBottom + margin);
+
+      if (isCurrentTimeOutOfView) {
+        setShowScrollToNow(true);
+        // Determine arrow direction based on where current time is relative to viewport
+        if (currentTimePosition < viewportTop) {
+          setCurrentTimeDirection('up'); // Current time is above viewport
+        } else {
+          setCurrentTimeDirection('down'); // Current time is below viewport
+        }
+      } else {
+        setShowScrollToNow(false);
+      }
+    }, hasAutoScrolled ? 0 : 200); // No delay for normal scroll, 200ms delay after auto-scroll
+
+    return () => clearTimeout(timeoutId);
+  }, [scrollY, selectedDay, hasAutoScrolled]);
+
+  // Function to scroll back to current time
+  const scrollToCurrentTime = () => {
+    // Prevent double animations
+    if (isScrollingToCurrentTime.current) {
+      return;
+    }
+
+    isScrollingToCurrentTime.current = true;
+    const currentTime = new Date();
+    const hour = currentTime.getHours();
+    const minutes = currentTime.getMinutes();
+    const currentTimePosition = (hour + minutes / 60) * 80;
+    const scrollPosition = Math.max(0, currentTimePosition - 80);
+
+    // Hide the button immediately to prevent multiple clicks
+    setShowScrollToNow(false);
+
+    scrollViewRef.current?.scrollTo({
+      y: scrollPosition,
+      animated: true,
+    });
+
+    // Reset the flag after animation completes
+    setTimeout(() => {
+      isScrollingToCurrentTime.current = false;
+    }, 500); // 500ms should be enough for the scroll animation
+  };
+
+  // Handle scroll events
+  const handleScroll = (event: any) => {
+    const offsetY = event.nativeEvent.contentOffset.y;
+    setScrollY(offsetY);
+  };
 
   // Get subjects for selected day
   const todaySubjects = subjects.filter(
@@ -388,6 +522,8 @@ const TimeTable: React.FC<TimeTableProps> = ({
         contentContainerStyle={styles.scrollContentContainer}
         // showsVerticalScrollIndicator={false}
         // bounces={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
       >
         <View style={styles.timeGrid}>
           {/* Transparent touchable background to ensure scrolling works everywhere */}
@@ -452,6 +588,23 @@ const TimeTable: React.FC<TimeTableProps> = ({
           {renderTimeIndicator()}
         </View>
       </ScrollView>
+
+      {/* Scroll to Now button - only show for Today tab when user has scrolled away from current time */}
+      {showScrollToNow && selectedDay === new Date().getDay() && (
+        <TouchableOpacity
+          style={[
+            styles.scrollToNowButton,
+            currentTimeDirection === 'up' && styles.scrollToNowButtonUp,
+            currentTimeDirection === 'down' && styles.scrollToNowButtonDown,
+          ]}
+          onPress={scrollToCurrentTime}
+          activeOpacity={0.8}>
+          <Image
+            source={currentTimeDirection === 'up' ? upArrowImage : downArrowImage}
+            style={styles.scrollToNowButtonImage}
+          />
+        </TouchableOpacity>
+      )}
     </GestureHandlerRootView>
   );
 };
@@ -669,6 +822,45 @@ const styles = StyleSheet.create({
   timeIndicatorText: {
     color: '#FFD700',
     fontSize: 10,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  scrollToNowButton: {
+    position: 'absolute',
+    bottom: 90, // Position above the bottom navigation (76 + 14 for spacing)
+    right: 20, // Position at right with some margin
+    backgroundColor: '#6366f1',
+    borderRadius: 25, // Slightly larger button for better visibility
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+    zIndex: 1000, // Higher z-index to ensure it's always on top
+    minWidth: 50, // Ensure minimum size
+    minHeight: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scrollToNowButtonUp: {
+    transform: [{translateY: 0}],
+  },
+  scrollToNowButtonDown: {
+    transform: [{translateY: 0}],
+  },
+  scrollToNowButtonImage: {
+    width: 24,
+    height: 24,
+    tintColor: '#FFFFFF', // Make the arrow white for visibility
+  },
+  scrollToNowButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
     fontWeight: '600',
     textAlign: 'center',
   },
