@@ -38,7 +38,7 @@ const TimeTable: React.FC<TimeTableProps> = ({
   registerNames: _registerNames,
 }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [selectedDay, setSelectedDay] = useState(new Date().getDay()); // 0 = Sunday, 1 = Monday, etc.
+  const [selectedDay, setSelectedDay] = useState(new Date().getDay()); // Initialize with today
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(
     null,
   ); // Track clicked subject
@@ -46,33 +46,57 @@ const TimeTable: React.FC<TimeTableProps> = ({
   const scrollViewRef = useRef<ScrollView>(null);
   const currentTimeLineY = useRef(new Animated.Value(0)).current;
 
-  // Days of the week - reordered to start from yesterday/today for better UX
+  // Days of the week with full names
   const getAllDays = () => [
-    {name: 'Sun', fullName: 'Sunday', index: 0},
-    {name: 'Mon', fullName: 'Monday', index: 1},
-    {name: 'Tue', fullName: 'Tuesday', index: 2},
-    {name: 'Wed', fullName: 'Wednesday', index: 3},
-    {name: 'Thu', fullName: 'Thursday', index: 4},
-    {name: 'Fri', fullName: 'Friday', index: 5},
-    {name: 'Sat', fullName: 'Saturday', index: 6},
+    {name: 'Sunday', fullName: 'Sunday', index: 0},
+    {name: 'Monday', fullName: 'Monday', index: 1},
+    {name: 'Tuesday', fullName: 'Tuesday', index: 2},
+    {name: 'Wednesday', fullName: 'Wednesday', index: 3},
+    {name: 'Thursday', fullName: 'Thursday', index: 4},
+    {name: 'Friday', fullName: 'Friday', index: 5},
+    {name: 'Saturday', fullName: 'Saturday', index: 6},
   ];
 
-  // Reorder days to start from yesterday, putting today as 2nd item
-  const getReorderedDays = () => {
+  // Get ordered days with Today and Tomorrow first
+  const getOrderedDays = () => {
     const allDays = getAllDays();
     const today = new Date().getDay(); // 0 = Sunday, 1 = Monday, etc.
-    const yesterday = today === 0 ? 6 : today - 1;
+    const tomorrow = (today + 1) % 7;
 
-    // Create array starting from yesterday
-    const reorderedDays = [];
+    const orderedDays = [];
+
+    // Add Today tab
+    orderedDays.push({
+      name: 'Today',
+      fullName: allDays[today].fullName,
+      index: today,
+      isSpecial: true,
+    });
+
+    // Add Tomorrow tab
+    orderedDays.push({
+      name: 'Tomorrow',
+      fullName: allDays[tomorrow].fullName,
+      index: tomorrow,
+      isSpecial: true,
+    });
+
+    // Add remaining days with full names
     for (let i = 0; i < 7; i++) {
-      const dayIndex = (yesterday + i) % 7;
-      reorderedDays.push(allDays[dayIndex]);
+      if (i !== today && i !== tomorrow) {
+        orderedDays.push({
+          name: allDays[i].name,
+          fullName: allDays[i].fullName,
+          index: i,
+          isSpecial: false,
+        });
+      }
     }
-    return reorderedDays;
+
+    return orderedDays;
   };
 
-  const daysOfWeek = getReorderedDays();
+  const daysOfWeek = getOrderedDays();
 
   // Generate hours (24-hour format)
   const hours = Array.from({length: 24}, (_, i) => {
@@ -340,12 +364,15 @@ const TimeTable: React.FC<TimeTableProps> = ({
               key={day.index}
               style={[
                 styles.dayTab,
+                day.isSpecial && styles.specialDayTab,
                 selectedDay === day.index && styles.dayTabActive,
+                selectedDay === day.index && day.isSpecial && styles.specialDayTabActive,
               ]}
               onPress={() => setSelectedDay(day.index)}>
               <Text
                 style={[
                   styles.dayTabText,
+                  day.isSpecial && styles.specialDayTabText,
                   selectedDay === day.index && styles.dayTabTextActive,
                 ]}>
                 {day.name}
@@ -548,19 +575,47 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     marginHorizontal: 4,
-    borderRadius: 20,
-    borderWidth: 1,
+    borderRadius: 24,
+    borderWidth: 2,
     borderColor: '#475569',
     backgroundColor: 'transparent',
+    minWidth: 80,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  specialDayTab: {
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 24,
+    borderWidth: 3,
+    borderColor: '#6366f1',
+    backgroundColor: 'transparent',
+    minWidth: 100,
+    marginRight: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   dayTabActive: {
     backgroundColor: '#8B5CF6',
     borderColor: '#8B5CF6',
+    transform: [{scale: 1.05}],
+  },
+  specialDayTabActive: {
+    backgroundColor: '#6366f1',
+    borderColor: '#6366f1',
+    borderWidth: 3,
+    transform: [{scale: 1.02}],
   },
   dayTabText: {
     fontSize: 14,
     fontWeight: '600',
     color: '#94A3B8',
+    textAlign: 'center',
+  },
+  specialDayTabText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#6366f1',
   },
   dayTabTextActive: {
     color: '#FFFFFF',
