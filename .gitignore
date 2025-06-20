@@ -35,6 +35,22 @@ local.properties
 *.keystore
 !debug.keystore
 
+# Android build artifacts and assets
+android/app/src/main/assets/
+android/app/src/main/res/drawable-*/
+android/app/src/main/res/raw/
+android/app/build/
+android/build/
+
+# React Navigation generated assets
+**/node_modules_reactnavigation_*
+
+# Metro bundler assets
+**/src_assets_*
+
+# Splash screen assets
+**/screen.png
+
 # node.js
 #
 node_modules/
