@@ -9,18 +9,9 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native';
-
-interface Task {
-  id: number;
-  title: string;
-  description: string;
-  completed: boolean;
-  priority: 'high' | 'medium' | 'low';
-  dueDate: string;
-  category: string;
-  timestamp: string;
-}
+import {useTaskStore, Task} from '../../store/taskStore';
 
 interface TasksScreenProps {
   toggleSidebar?: () => void;
@@ -28,59 +19,37 @@ interface TasksScreenProps {
 
 const TasksScreen: React.FC<TasksScreenProps> = ({}: any) => {
   const navigation = useNavigation();
-  const [tasks, setTasks] = useState<Task[]>([
-    {
-      id: 1,
-      title: 'Complete Math Assignment',
-      description: 'Solve problems 1-20 from Chapter 5',
-      completed: false,
-      priority: 'high',
-      dueDate: '2025-06-20',
-      category: 'Assignment',
-      timestamp: '10:30 AM',
-    },
-    {
-      id: 2,
-      title: 'Study for Physics Quiz',
-      description: 'Review chapters 8-10 on thermodynamics',
-      completed: true,
-      priority: 'medium',
-      dueDate: '2025-06-19',
-      category: 'Study',
-      timestamp: '11:45 AM',
-    },
-    {
-      id: 3,
-      title: 'Prepare Chemistry Lab Report',
-      description: 'Write report on acid-base reactions experiment',
-      completed: false,
-      priority: 'high',
-      dueDate: '2025-06-21',
-      category: 'Lab Report',
-      timestamp: '2:15 PM',
-    },
-  ]);
+  const {
+    tasks,
+    completedTasks,
+    addTask,
+    toggleTaskCompletion,
+    deleteTask,
+    deleteCompletedTask,
+    clearAllTasks,
+    clearAllCompletedTasks,
+  } = useTaskStore();
 
   const [inputText, setInputText] = useState('');
+  const [showCompletedTasks, setShowCompletedTasks] = useState(false);
   const flatListRef = useRef<FlatList>(null);
 
+  // Auto scroll to bottom when new tasks are added
   useEffect(() => {
-    // Auto scroll to bottom when new tasks are added
-    if (tasks.length > 0) {
+    if (tasks.length > 0 && !showCompletedTasks) {
       setTimeout(() => {
         flatListRef.current?.scrollToEnd({animated: true});
       }, 100);
     }
-  }, [tasks.length]);
+  }, [tasks.length, showCompletedTasks]);
 
   const addNewTask = () => {
     if (inputText.trim()) {
-      const newTask: Task = {
-        id: Date.now(),
+      const newTaskData = {
         title: inputText.trim(),
         description: '',
         completed: false,
-        priority: 'medium',
+        priority: 'medium' as const,
         dueDate: new Date().toISOString().split('T')[0],
         category: 'Task',
         timestamp: new Date().toLocaleTimeString('en-US', {
@@ -89,16 +58,69 @@ const TasksScreen: React.FC<TasksScreenProps> = ({}: any) => {
           hour12: true,
         }),
       };
-      setTasks(prev => [...prev, newTask]);
+      addTask(newTaskData);
       setInputText('');
     }
   };
 
-  const toggleTaskCompletion = (taskId: number) => {
-    setTasks(prevTasks =>
-      prevTasks.map(task =>
-        task.id === taskId ? {...task, completed: !task.completed} : task,
-      ),
+  const handleTaskPress = (taskId: number) => {
+    if (showCompletedTasks) {
+      // For completed tasks, just show details or do nothing
+      return;
+    }
+    // Toggle completion for active tasks
+    toggleTaskCompletion(taskId);
+  };
+
+  const handleTaskLongPress = (taskId: number) => {
+    const taskList = showCompletedTasks ? completedTasks : tasks;
+    const task = taskList.find((t: Task) => t.id === taskId);
+
+    if (!task) return;
+
+    Alert.alert(
+      'Delete Task',
+      `Are you sure you want to delete "${task.title}"?`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            if (showCompletedTasks) {
+              deleteCompletedTask(taskId);
+            } else {
+              deleteTask(taskId);
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const handleClearAll = () => {
+    const actionText = showCompletedTasks ? 'completed tasks' : 'all tasks';
+    const clearAction = showCompletedTasks
+      ? clearAllCompletedTasks
+      : clearAllTasks;
+
+    Alert.alert(
+      'Clear All Tasks',
+      `Are you sure you want to delete all ${actionText}?`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Clear All',
+          style: 'destructive',
+          onPress: clearAction,
+        },
+      ],
     );
   };
 
@@ -122,7 +144,8 @@ const TasksScreen: React.FC<TasksScreenProps> = ({}: any) => {
           styles.messageBubble,
           item.completed && styles.completedMessageBubble,
         ]}
-        onPress={() => toggleTaskCompletion(item.id)}>
+        onPress={() => handleTaskPress(item.id)}
+        onLongPress={() => handleTaskLongPress(item.id)}>
         <View style={styles.messageHeader}>
           <View style={[styles.checkbox, item.completed && styles.checkedBox]}>
             {item.completed && <Text style={styles.checkmark}>✓</Text>}
@@ -147,7 +170,11 @@ const TasksScreen: React.FC<TasksScreenProps> = ({}: any) => {
               {backgroundColor: getPriorityColor(item.priority)},
             ]}
           />
-          <Text style={styles.messageTime}>{item.timestamp}</Text>
+          <Text style={styles.messageTime}>
+            {showCompletedTasks && item.completedAt
+              ? `Completed: ${item.completedAt}`
+              : item.timestamp}
+          </Text>
         </View>
       </TouchableOpacity>
     </View>
@@ -163,43 +190,63 @@ const TasksScreen: React.FC<TasksScreenProps> = ({}: any) => {
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
         <View style={styles.headerInfo}>
-          <Text style={styles.headerTitle}>Task Manager</Text>
-          <Text style={styles.headerSubtitle}>
-            {tasks.filter(t => !t.completed).length} pending tasks
+          <Text style={styles.headerTitle}>
+            {showCompletedTasks ? 'Completed Tasks' : 'Task Manager'}
           </Text>
+          <Text style={styles.headerSubtitle}>
+            {showCompletedTasks
+              ? `${completedTasks.length} completed tasks`
+              : `${tasks.length} pending tasks`}
+          </Text>
+        </View>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={() => setShowCompletedTasks(!showCompletedTasks)}>
+            <Text style={styles.headerButtonText}>
+              {showCompletedTasks ? '📝' : '✅'}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={handleClearAll}>
+            <Text style={styles.headerButtonText}>🗑️</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
       {/* Messages List */}
       <FlatList
         ref={flatListRef}
-        data={tasks}
+        data={showCompletedTasks ? completedTasks : tasks}
         renderItem={renderTaskMessage}
         keyExtractor={item => item.id.toString()}
         contentContainerStyle={styles.messagesList}
         showsVerticalScrollIndicator={false}
       />
 
-      {/* Input Area */}
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.textInput}
-          value={inputText}
-          onChangeText={setInputText}
-          placeholder="Add a new task..."
-          placeholderTextColor="#9CA3AF"
-          multiline
-          onSubmitEditing={addNewTask}
-        />
-        <TouchableOpacity
-          style={[
-            styles.sendButton,
-            inputText.trim() && styles.sendButtonActive,
-          ]}
-          onPress={addNewTask}>
-          <Text style={styles.sendIcon}>→</Text>
-        </TouchableOpacity>
-      </View>
+      {/* Input Area - Hidden when showing completed tasks */}
+      {!showCompletedTasks && (
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={styles.textInput}
+            value={inputText}
+            onChangeText={setInputText}
+            placeholder="Add a new task..."
+            placeholderTextColor="#9CA3AF"
+            multiline
+            onSubmitEditing={addNewTask}
+          />
+          <TouchableOpacity
+            style={[
+              styles.sendButton,
+              inputText.trim() && styles.sendButtonActive,
+            ]}
+            onPress={addNewTask}>
+            <Text style={styles.sendIcon}>→</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </KeyboardAvoidingView>
   );
 };
@@ -227,6 +274,22 @@ const styles = StyleSheet.create({
   headerInfo: {
     flex: 1,
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#27272A',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerButtonText: {
+    fontSize: 16,
+  },
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
@@ -238,7 +301,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   messagesList: {
-    padding: 16,
+    padding: 8,
     paddingBottom: 20,
   },
   messageContainer: {
@@ -249,8 +312,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#6366F1',
     borderRadius: 18,
     padding: 12,
-    maxWidth: '85%',
-    minWidth: '40%',
+    maxWidth: '95%',
+    minWidth: '80%',
   },
   completedMessageBubble: {
     backgroundColor: '#10B981',
