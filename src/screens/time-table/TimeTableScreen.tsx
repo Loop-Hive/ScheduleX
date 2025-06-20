@@ -44,17 +44,16 @@ const TimeTableScreen: React.FC<TimeTableScreenProps> = ({
   navigation,
   handleMenuOpen: _handleMenuOpen,
 }) => {
-  const {registers, activeRegister, markPresent} = useStore();
+  const {registers, activeRegister, markPresent, selectedRegisters, setSelectedRegisters} = useStore();
   const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [selectedRegisters, setSelectedRegisters] = useState<number[]>([]);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-  // Initialize selectedRegisters with activeRegister by default
+  // Initialize selectedRegisters if empty (handles first app launch)
   useEffect(() => {
     if (Object.keys(registers).length > 0 && selectedRegisters.length === 0) {
       setSelectedRegisters([activeRegister]);
     }
-  }, [registers, activeRegister, selectedRegisters]);
+  }, [registers, activeRegister, selectedRegisters, setSelectedRegisters]);
 
   // Convert store data to TimeTable format
   useEffect(() => {
@@ -132,13 +131,11 @@ const TimeTableScreen: React.FC<TimeTableScreenProps> = ({
   };
 
   const toggleRegister = (registerId: number) => {
-    setSelectedRegisters(prev => {
-      if (prev.includes(registerId)) {
-        return prev.filter(id => id !== registerId);
-      } else {
-        return [...prev, registerId];
-      }
-    });
+    if (selectedRegisters.includes(registerId)) {
+      setSelectedRegisters(selectedRegisters.filter(id => id !== registerId));
+    } else {
+      setSelectedRegisters([...selectedRegisters, registerId]);
+    }
   };
 
   const getDropdownDisplayText = () => {
@@ -325,8 +322,8 @@ const styles = StyleSheet.create({
   dropdownContainer: {
     position: 'relative',
     zIndex: 1000,
-    minWidth: 120,
-    maxWidth: 160,
+    minWidth: 150,
+    maxWidth: 200,
   },
   dropdownButton: {
     backgroundColor: '#2D2D2D',

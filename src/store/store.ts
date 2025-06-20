@@ -21,10 +21,12 @@ interface StoreState {
   activeRegister: number;
   updatedAt: Date | null;
   defaultTargetPercentage: number;
+  selectedRegisters: number[];
   setRegisters: (regNo: number, cardsData: CardInterface[]) => void;
   updateDate: (date: Date) => void;
   changeCopyRegister: (registerId: number) => void;
   setActiveRegister: (registerId: number) => void;
+  setSelectedRegisters: (selectedIds: number[]) => void;
   addRegister: (registerId: number, registerName: string) => void;
   renameRegister: (registerId: number, registerName: string) => void;
   removeRegister: (registerId: number) => void;
@@ -127,6 +129,7 @@ export const useStore = create<StoreState>()(
       copyRegister: 0,
       updatedAt: null,
       defaultTargetPercentage: 75,
+      selectedRegisters: [0], // Initialize with default register
 
       changeCopyRegister: (registerId: number) =>
         set(() => ({
@@ -134,8 +137,15 @@ export const useStore = create<StoreState>()(
         })),
 
       setActiveRegister: (registerId: number) =>
-        set(() => ({
+        set(state => ({
           activeRegister: registerId,
+          // If no registers are selected, select the new active register
+          selectedRegisters: state.selectedRegisters.length === 0 ? [registerId] : state.selectedRegisters,
+        })),
+
+      setSelectedRegisters: (selectedIds: number[]) =>
+        set(() => ({
+          selectedRegisters: selectedIds,
         })),
       setRegisters: (registerId: number, cardsData: CardInterface[]) =>
         set(state => ({
@@ -211,9 +221,17 @@ export const useStore = create<StoreState>()(
             delete registers[keys.length - 1];
             const newActiveRegister =
               state.activeRegister === registerId ? 0 : state.activeRegister;
+
+            // Remove the deleted register from selectedRegisters and ensure valid selection
+            let newSelectedRegisters = state.selectedRegisters.filter(id => id !== registerId);
+            if (newSelectedRegisters.length === 0 && Object.keys(registers).length > 0) {
+              newSelectedRegisters = [newActiveRegister];
+            }
+
             return {
               registers,
               activeRegister: newActiveRegister,
+              selectedRegisters: newSelectedRegisters,
             };
           }
           return state;
