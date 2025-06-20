@@ -9,12 +9,14 @@ import {
   Platform,
   ToastAndroid,
   Image,
+  Alert,
 } from 'react-native';
 import useStore from '../../store/store';
 import {CardInterface} from '../../types/cards';
 import Calendar from '../../components/Calendar';
 import {convertToUTM, formatToHHMM} from '../../utils/functions';
 import {TextInput} from 'react-native-gesture-handler';
+import QRIcon from '../../assets/icons/QRIcon';
 
 const ViewCardDetails: React.FC = ({navigation, route}: any) => {
   const {card_register, card_id} = route.params;
@@ -107,6 +109,20 @@ const ViewCardDetails: React.FC = ({navigation, route}: any) => {
   const handleTodayClick = () => {
     setCurrentMonth(new Date());
   };
+  
+  const handleQRScan = () => {
+    Alert.alert(
+      'QR Scanner',
+      'QR code scanning functionality will be implemented soon!',
+      [{ text: 'OK' }]
+    );
+    // TODO: Implement QR scanner functionality
+    // This could be used for:
+    // - Scanning attendance QR codes
+    // - Adding subjects via QR codes
+    // - Importing schedules from QR codes
+  };
+  
   const handleNavigateBack = () => {
     navigation.goBack();
   };
@@ -157,12 +173,10 @@ const ViewCardDetails: React.FC = ({navigation, route}: any) => {
             : card.title}
         </Text>
         <TouchableOpacity
-          onPress={handleTodayClick}
-          style={styles.todayContainer}>
-          <Image
-            source={require('../../assets/images/today.png')}
-            style={styles.todayIcon}
-          />
+          onPress={handleQRScan}
+          style={styles.qrContainer}
+          activeOpacity={0.7}>
+          <QRIcon width={28} height={28} color="#6366F1" />
         </TouchableOpacity>
       </View>
 
@@ -286,6 +300,18 @@ const styles = StyleSheet.create({
   },
   todayContainer: {
     marginLeft: 'auto',
+  },
+  qrContainer: {
+    marginLeft: 'auto',
+    padding: 10,
+    borderRadius: 12,
+    backgroundColor: '#6366F120',
+    borderWidth: 1,
+    borderColor: '#6366F140',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 48,
+    minHeight: 48,
   },
   todayIcon: {
     width: 35,

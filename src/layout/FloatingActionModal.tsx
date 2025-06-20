@@ -8,7 +8,9 @@ import {
   Animated,
   Dimensions,
   TouchableWithoutFeedback,
+  Image,
 } from 'react-native';
+import QRIcon from '../assets/icons/QRIcon';
 
 interface FloatingActionModalProps {
   visible: boolean;
@@ -17,6 +19,7 @@ interface FloatingActionModalProps {
   onAddTask: () => void;
   onGenerateAI: () => void;
   onImportSubjects: () => void;
+  onScanQR: () => void;
 }
 
 const {width, height} = Dimensions.get('window');
@@ -28,6 +31,7 @@ const FloatingActionModal: React.FC<FloatingActionModalProps> = ({
   onAddTask,
   onGenerateAI,
   onImportSubjects,
+  onScanQR,
 }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.3)).current;
@@ -68,6 +72,7 @@ const FloatingActionModal: React.FC<FloatingActionModalProps> = ({
       id: 1,
       title: 'Add Subject',
       icon: '📚',
+      iconType: 'emoji',
       color: '#6366F1',
       onPress: onAddSubject,
     },
@@ -75,6 +80,7 @@ const FloatingActionModal: React.FC<FloatingActionModalProps> = ({
       id: 2,
       title: 'Add Task',
       icon: '✅',
+      iconType: 'emoji',
       color: '#10B981',
       onPress: onAddTask,
     },
@@ -82,6 +88,7 @@ const FloatingActionModal: React.FC<FloatingActionModalProps> = ({
       id: 3,
       title: 'Generate using AI',
       icon: '🤖',
+      iconType: 'emoji',
       color: '#8B5CF6',
       onPress: onGenerateAI,
     },
@@ -89,8 +96,17 @@ const FloatingActionModal: React.FC<FloatingActionModalProps> = ({
       id: 4,
       title: 'Import Subjects',
       icon: '📥',
+      iconType: 'emoji',
       color: '#F59E0B',
       onPress: onImportSubjects,
+    },
+    {
+      id: 5,
+      title: 'Scan QR Code',
+      icon: 'qr',
+      iconType: 'component',
+      color: '#EF4444',
+      onPress: onScanQR,
     },
   ];
 
@@ -159,9 +175,13 @@ const FloatingActionModal: React.FC<FloatingActionModalProps> = ({
                               styles.actionIcon,
                               {backgroundColor: `${action.color}20`},
                             ]}>
-                            <Text style={styles.actionEmoji}>
-                              {action.icon}
-                            </Text>
+                            {action.iconType === 'component' && action.icon === 'qr' ? (
+                              <QRIcon width={20} height={20} color={action.color} />
+                            ) : (
+                              <Text style={styles.actionEmoji}>
+                                {action.icon}
+                              </Text>
+                            )}
                           </View>
                           <Text style={styles.actionTitle}>{action.title}</Text>
                         </View>

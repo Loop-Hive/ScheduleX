@@ -6,6 +6,7 @@ import {
   Animated,
   Dimensions,
   Text,
+  Alert,
 } from 'react-native';
 import {BottomTabBarProps} from '@react-navigation/bottom-tabs';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -126,6 +127,17 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({state, navigation}) => {
   const handleImportSubjects = () => {
     // Navigate to import subjects screen when implemented
     console.log('Import Subjects pressed');
+  };
+
+  const handleScanQR = () => {
+    // Navigate to QR scanner screen when implemented
+    Alert.alert(
+      'QR Scanner',
+      'QR Code scanner feature will be implemented soon!',
+      [{ text: 'OK' }]
+    );
+    // You can add navigation to a QR scanner screen here
+    // navigation.navigate('QRScanner');
   };
 
   return (
@@ -273,6 +285,7 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({state, navigation}) => {
         onAddTask={handleAddTask}
         onGenerateAI={handleGenerateAI}
         onImportSubjects={handleImportSubjects}
+        onScanQR={handleScanQR}
       />
     </>
   );
