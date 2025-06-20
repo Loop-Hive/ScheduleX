@@ -246,7 +246,7 @@ const TimeTable: React.FC<TimeTableProps> = ({
       left: 80 + leftOffset + 2, // Minimal left margin
       width: cardWidth,
       height: height, // Exact height without reduction
-      zIndex: 10,
+      zIndex: 20,
     };
   };
 
@@ -382,73 +382,76 @@ const TimeTable: React.FC<TimeTableProps> = ({
         </ScrollView>
       </View>
 
-      <TouchableOpacity
-        style={styles.timeTableContainer}
-        activeOpacity={1}
-        onPress={handleTimeTableClick}>
-        <ScrollView
-          ref={scrollViewRef}
-          style={styles.scrollView}
-          // showsVerticalScrollIndicator={false}
-          // bounces={false}
-        >
-          <View style={styles.timeGrid}>
-            {/* Time labels */}
-            <View style={styles.timeLabelsContainer}>
-              {hours.map(({hour, display}, index) => (
-                <View key={hour} style={styles.timeSlot}>
-                  {/* Only show time label for every hour, positioned at the top border */}
-                  <Text
-                    style={[
-                      styles.timeLabel,
-                      {marginTop: index === 0 ? 6 : -6},
-                    ]}>
-                    {display}
-                  </Text>
-                </View>
-              ))}
-            </View>
+      <ScrollView
+        ref={scrollViewRef}
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContentContainer}
+        // showsVerticalScrollIndicator={false}
+        // bounces={false}
+      >
+        <View style={styles.timeGrid}>
+          {/* Transparent touchable background to ensure scrolling works everywhere */}
+          <TouchableOpacity
+            style={styles.backgroundTouchable}
+            activeOpacity={1}
+            onPress={handleTimeTableClick}
+          />
 
-            {/* Hour dividers */}
-            <View style={styles.hourDividers}>
-              {hours.map(({hour}) => (
-                <View key={hour} style={styles.hourDivider} />
-              ))}
-            </View>
-
-            {/* Current time indicator - only show for today */}
-            {selectedDay === new Date().getDay() && (
-              <Animated.View
-                style={[
-                  styles.currentTimeLine,
-                  {
-                    top: currentTimeLineY,
-                  },
-                ]}>
-                <View style={styles.currentTimeCircle} />
-                <View style={styles.currentTimeLineBar} />
-              </Animated.View>
-            )}
-
-            {/* Subject cards */}
-            <View style={styles.subjectsContainer}>
-              {getSubjectGroups().map((subjectGroup, groupIndex) =>
-                subjectGroup.map((subject, positionInGroup) =>
-                  renderSubjectCard(
-                    subject,
-                    groupIndex,
-                    positionInGroup,
-                    subjectGroup.length,
-                  ),
-                ),
-              )}
-            </View>
-
-            {/* Time indicator for selected subject */}
-            {renderTimeIndicator()}
+          {/* Time labels */}
+          <View style={styles.timeLabelsContainer}>
+            {hours.map(({hour, display}, index) => (
+              <View key={hour} style={styles.timeSlot}>
+                {/* Only show time label for every hour, positioned at the top border */}
+                <Text
+                  style={[
+                    styles.timeLabel,
+                    {marginTop: index === 0 ? 6 : -6},
+                  ]}>
+                  {display}
+                </Text>
+              </View>
+            ))}
           </View>
-        </ScrollView>
-      </TouchableOpacity>
+
+          {/* Hour dividers */}
+          <View style={styles.hourDividers}>
+            {hours.map(({hour}) => (
+              <View key={hour} style={styles.hourDivider} />
+            ))}
+          </View>
+
+          {/* Current time indicator - only show for today */}
+          {selectedDay === new Date().getDay() && (
+            <Animated.View
+              style={[
+                styles.currentTimeLine,
+                {
+                  top: currentTimeLineY,
+                },
+              ]}>
+              <View style={styles.currentTimeCircle} />
+              <View style={styles.currentTimeLineBar} />
+            </Animated.View>
+          )}
+
+          {/* Subject cards */}
+          <View style={styles.subjectsContainer}>
+            {getSubjectGroups().map((subjectGroup, groupIndex) =>
+              subjectGroup.map((subject, positionInGroup) =>
+                renderSubjectCard(
+                  subject,
+                  groupIndex,
+                  positionInGroup,
+                  subjectGroup.length,
+                ),
+              ),
+            )}
+          </View>
+
+          {/* Time indicator for selected subject */}
+          {renderTimeIndicator()}
+        </View>
+      </ScrollView>
     </GestureHandlerRootView>
   );
 };
@@ -458,18 +461,26 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#18181B',
   },
-  timeTableContainer: {
-    flex: 1,
-  },
   scrollView: {
     flex: 1,
     marginBottom: 76,
     // marginTop: 8,
     // paddingTop: 8,
   },
+  scrollContentContainer: {
+    flexGrow: 1,
+  },
   timeGrid: {
     height: 24 * 80, // 24 hours * 80px per hour
     position: 'relative',
+  },
+  backgroundTouchable: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1,
   },
   timeLabelsContainer: {
     position: 'absolute',
@@ -515,7 +526,7 @@ const styles = StyleSheet.create({
     height: 2,
     flexDirection: 'row',
     alignItems: 'center',
-    zIndex: 20,
+    zIndex: 25,
   },
   currentTimeCircle: {
     width: 12,
@@ -631,7 +642,7 @@ const styles = StyleSheet.create({
     right: 0,
     height: 2,
     backgroundColor: '#FFD700',
-    zIndex: 15,
+    zIndex: 22,
   },
   timeIndicatorLabel: {
     position: 'absolute',
@@ -643,7 +654,7 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderWidth: 1,
     borderColor: '#FFD700',
-    zIndex: 20,
+    zIndex: 30,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
