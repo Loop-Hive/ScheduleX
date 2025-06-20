@@ -49,6 +49,7 @@ const TimeTable: React.FC<TimeTableProps> = ({
 }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState(new Date().getDay()); // Initialize with today
+  const [selectedTabKey, setSelectedTabKey] = useState('today'); // Track which specific tab is selected
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(
     null,
   ); // Track clicked subject
@@ -87,7 +88,7 @@ const TimeTable: React.FC<TimeTableProps> = ({
     {name: 'Saturday', fullName: 'Saturday', index: 6},
   ];
 
-  // Get ordered days with Today and Tomorrow first
+  // Get ordered days with Today and Tomorrow first, then complete week Monday-Sunday
   const getOrderedDays = () => {
     const allDays = getAllDays();
     const today = new Date().getDay(); // 0 = Sunday, 1 = Monday, etc.
@@ -101,6 +102,7 @@ const TimeTable: React.FC<TimeTableProps> = ({
       fullName: allDays[today].fullName,
       index: today,
       isSpecial: true,
+      tabKey: 'today',
     });
 
     // Add Tomorrow tab
@@ -109,18 +111,21 @@ const TimeTable: React.FC<TimeTableProps> = ({
       fullName: allDays[tomorrow].fullName,
       index: tomorrow,
       isSpecial: true,
+      tabKey: 'tomorrow',
     });
 
-    // Add remaining days with full names
-    for (let i = 0; i < 7; i++) {
-      if (i !== today && i !== tomorrow) {
-        orderedDays.push({
-          name: allDays[i].name,
-          fullName: allDays[i].fullName,
-          index: i,
-          isSpecial: false,
-        });
-      }
+    // Add complete week Monday through Sunday (independent of today/tomorrow)
+    // Start with Monday (index 1) and go through Sunday (index 0)
+    const weekOrder = [1, 2, 3, 4, 5, 6, 0]; // Monday to Sunday
+
+    for (const dayIndex of weekOrder) {
+      orderedDays.push({
+        name: allDays[dayIndex].name,
+        fullName: allDays[dayIndex].fullName,
+        index: dayIndex,
+        isSpecial: false,
+        tabKey: `week-${dayIndex}`,
+      });
     }
 
     return orderedDays;
@@ -170,7 +175,7 @@ const TimeTable: React.FC<TimeTableProps> = ({
   // Auto-scroll logic for day changes
   useEffect(() => {
     if (!hasAutoScrolled) {
-      const isToday = selectedDay === new Date().getDay();
+      const isToday = selectedTabKey === 'today';
       let scrollPosition = 0;
 
       if (isToday) {
@@ -224,11 +229,11 @@ const TimeTable: React.FC<TimeTableProps> = ({
     setHasAutoScrolled(false);
     setShowScrollToNow(false); // Reset arrow state immediately when switching days
     setCurrentTimeDirection('down'); // Reset arrow direction to default
-  }, [selectedDay]);
+  }, [selectedDay, selectedTabKey]);
 
   // Calculate current time position and detect if user scrolled away (only for Today tab)
   useEffect(() => {
-    const isToday = selectedDay === new Date().getDay();
+    const isToday = selectedTabKey === 'today';
     if (!isToday) {
       setShowScrollToNow(false);
       return;
@@ -282,7 +287,7 @@ const TimeTable: React.FC<TimeTableProps> = ({
     }, hasAutoScrolled ? 0 : 200); // No delay for normal scroll, 200ms delay after auto-scroll
 
     return () => clearTimeout(timeoutId);
-  }, [scrollY, selectedDay, hasAutoScrolled]);
+  }, [scrollY, selectedDay, hasAutoScrolled, selectedTabKey]);
 
   // Function to scroll back to current time
   const scrollToCurrentTime = () => {
@@ -647,22 +652,27 @@ const TimeTable: React.FC<TimeTableProps> = ({
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.dayTabsScrollView}>
+          contentContainerStyle={styles.dayTabsScrollView}
+          bounces={false}
+          decelerationRate="fast">
           {daysOfWeek.map(day => (
             <TouchableOpacity
-              key={day.index}
+              key={day.tabKey}
               style={[
                 styles.dayTab,
                 day.isSpecial && styles.specialDayTab,
-                selectedDay === day.index && styles.dayTabActive,
-                selectedDay === day.index && day.isSpecial && styles.specialDayTabActive,
+                selectedTabKey === day.tabKey && styles.dayTabActive,
+                selectedTabKey === day.tabKey && day.isSpecial && styles.specialDayTabActive,
               ]}
-              onPress={() => setSelectedDay(day.index)}>
+              onPress={() => {
+                setSelectedDay(day.index);
+                setSelectedTabKey(day.tabKey);
+              }}>
               <Text
                 style={[
                   styles.dayTabText,
                   day.isSpecial && styles.specialDayTabText,
-                  selectedDay === day.index && styles.dayTabTextActive,
+                  selectedTabKey === day.tabKey && styles.dayTabTextActive,
                 ]}>
                 {day.name}
               </Text>
@@ -675,12 +685,9 @@ const TimeTable: React.FC<TimeTableProps> = ({
         ref={scrollViewRef}
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContentContainer}
-        // showsVerticalScrollIndicator={false}
-        // bounces={false}
         onScroll={handleScroll}
         scrollEventThrottle={16}
-        scrollEnabled={!isGestureActive} // Disable native scrolling during gesture interaction
-      >
+        scrollEnabled={!isGestureActive}>
         <View style={styles.timeGrid}>
           {/* Transparent touchable background to ensure scrolling works everywhere */}
           <TouchableOpacity
@@ -724,7 +731,7 @@ const TimeTable: React.FC<TimeTableProps> = ({
           </View>
 
           {/* Current time indicator - only show for today */}
-          {selectedDay === new Date().getDay() && (
+          {selectedTabKey === 'today' && (
             <Animated.View
               style={[
                 styles.currentTimeLine,
@@ -777,7 +784,7 @@ const TimeTable: React.FC<TimeTableProps> = ({
       </ScrollView>
 
       {/* Scroll to Now button - only show for Today tab when user has scrolled away from current time */}
-      {showScrollToNow && selectedDay === new Date().getDay() && (
+      {showScrollToNow && selectedTabKey === 'today' && (
         <TouchableOpacity
           style={[
             styles.scrollToNowButton,
@@ -921,6 +928,7 @@ const styles = StyleSheet.create({
   },
   dayTabsScrollView: {
     paddingHorizontal: 4,
+    paddingRight: 20, // Add extra padding at the end to ensure all tabs are accessible
   },
   dayTab: {
     paddingHorizontal: 16,
@@ -942,7 +950,7 @@ const styles = StyleSheet.create({
     borderColor: '#6366f1',
     backgroundColor: 'transparent',
     minWidth: 100,
-    marginRight: 8,
+    marginHorizontal: 4, // Use consistent margin like regular tabs
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1029,8 +1037,8 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
     zIndex: 1000, // Higher z-index to ensure it's always on top
-    minWidth: 50, // Ensure minimum size
-    minHeight: 50,
+    minWidth: 42, // Ensure minimum size
+    minHeight: 42,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1041,9 +1049,9 @@ const styles = StyleSheet.create({
     transform: [{translateY: 0}],
   },
   scrollToNowButtonImage: {
-    width: 24,
-    height: 24,
-    tintColor: '#FFFFFF', // Make the arrow white for visibility
+    width: 15,
+    height: 15,
+    tintColor: '#F0F0F0', // Make the arrow off-white for visibility
   },
   scrollToNowButtonText: {
     color: '#FFFFFF',
@@ -1078,7 +1086,7 @@ const styles = StyleSheet.create({
   },
   floatingTimeMarkerLabel: {
     position: 'absolute',
-    left: 4,
+    right: 4, // Move to right side instead of left
     width: 72,
     backgroundColor: '#F8F9FA', // Off-white to match the line
     borderRadius: 8,

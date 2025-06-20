@@ -17,7 +17,7 @@ const MaterialTopTabsNavigator: React.FC = () => {
           opacity: 0,
           display: 'none',
         },
-        swipeEnabled: true,
+        swipeEnabled: false, // Disable swipe to prevent interference with day tabs scrolling
         animationEnabled: true,
       }}>
       <Tab.Screen
