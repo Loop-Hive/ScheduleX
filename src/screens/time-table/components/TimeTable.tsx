@@ -9,7 +9,12 @@ import {
   Animated,
   Image,
 } from 'react-native';
-import {GestureHandlerRootView} from 'react-native-gesture-handler';
+import {
+  GestureHandlerRootView,
+  PanGestureHandler,
+  State,
+} from 'react-native-gesture-handler';
+import HapticFeedback from 'react-native-haptic-feedback';
 import {getTextColorForBackground} from '../../../types/allCardConstraint';
 
 // Import arrow images
@@ -51,9 +56,25 @@ const TimeTable: React.FC<TimeTableProps> = ({
   const [scrollY, setScrollY] = useState(0); // Track current scroll position
   const [showScrollToNow, setShowScrollToNow] = useState(false); // Show "scroll to now" button
   const [currentTimeDirection, setCurrentTimeDirection] = useState<'up' | 'down'>('down'); // Where current time is relative to viewport
+
+  // State for floating time marker
+  const [isGestureActive, setIsGestureActive] = useState(false);
+  const [markerY, setMarkerY] = useState(0);
+  const [markerTime, setMarkerTime] = useState('12:00 AM');
+  const [lastHapticHour, setLastHapticHour] = useState(-1);
+  const lastScrollTime = useRef(0); // Add throttling for scroll updates
+
   const scrollViewRef = useRef<ScrollView>(null);
   const currentTimeLineY = useRef(new Animated.Value(0)).current;
   const isScrollingToCurrentTime = useRef(false); // Track if currently scrolling to prevent double animations
+  const isUserGesturing = useRef(false); // Track if user is actively gesturing
+  const markerOpacity = useRef(new Animated.Value(0)).current;
+
+  // Haptic feedback options
+  const hapticOptions = {
+    enableVibrateFallback: true,
+    ignoreAndroidSystemSettings: false,
+  };
 
   // Days of the week with full names
   const getAllDays = () => [
@@ -130,6 +151,11 @@ const TimeTable: React.FC<TimeTableProps> = ({
 
   // Calculate current time line position
   useEffect(() => {
+    // Don't update current time line position while user is gesturing
+    if (isUserGesturing.current) {
+      return;
+    }
+
     const hour = currentTime.getHours();
     const minutes = currentTime.getMinutes();
     const position = (hour + minutes / 60) * 80; // 80 is hour height
@@ -211,6 +237,11 @@ const TimeTable: React.FC<TimeTableProps> = ({
     // Only show after initial auto-scroll has happened
     if (!hasAutoScrolled) {
       setShowScrollToNow(false);
+      return;
+    }
+
+    // Don't show button while user is actively gesturing
+    if (isUserGesturing.current) {
       return;
     }
 
@@ -399,6 +430,130 @@ const TimeTable: React.FC<TimeTableProps> = ({
     return todaySubjects.find(subject => subject.id === selectedSubjectId);
   };
 
+  // Format time for display
+  const formatTimeFromPosition = (yPosition: number) => {
+    // Calculate time based on Y position
+    const totalMinutes = (yPosition / 80) * 60;
+
+    // No snapping - exact minute precision
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = Math.round(totalMinutes % 60);
+
+    // Ensure hours are within 0-23 range
+    const clampedHours = Math.max(0, Math.min(23, hours));
+    const clampedMinutes = Math.max(0, Math.min(59, minutes));
+
+    // Format for display
+    const displayHour = clampedHours === 0 ? 12 : clampedHours > 12 ? clampedHours - 12 : clampedHours;
+    const ampm = clampedHours < 12 ? 'AM' : 'PM';
+    const minuteStr = clampedMinutes.toString().padStart(2, '0');
+
+    return `${displayHour}:${minuteStr} ${ampm}`;
+  };  // Handle pan gesture on time bar
+  const onPanGestureEvent = (event: any) => {
+    const { translationY, absoluteY } = event.nativeEvent;
+
+    // Calculate position relative to the time grid
+    const timeGridTop = 150; // Approximate offset from top (day tabs + headers)
+    const relativeY = absoluteY - timeGridTop + scrollY;
+
+    // Ensure the marker stays within the time grid bounds
+    const clampedY = Math.max(0, Math.min(24 * 80 - 2, relativeY));
+
+    // Update marker position directly without additional animations
+    setMarkerY(clampedY);
+    setMarkerTime(formatTimeFromPosition(clampedY));
+
+    // Simplified scroll logic - use translationY for smoother experience
+    const currentScreenY = absoluteY - 150; // Position relative to time grid start
+    const viewportHeight = screenHeight - 226;
+
+    // Define comfort zones for scrolling
+    const topTriggerZone = viewportHeight * 0.2; // Top 20% of screen
+    const bottomTriggerZone = viewportHeight * 0.8; // Bottom 20% of screen
+
+    let shouldScroll = false;
+    let newScrollY = scrollY;
+
+    if (currentScreenY < topTriggerZone && scrollY > 0) {
+      // Near top of screen, scroll up
+      const scrollAmount = (topTriggerZone - currentScreenY) * 0.5;
+      newScrollY = Math.max(0, scrollY - scrollAmount);
+      shouldScroll = true;
+    } else if (currentScreenY > bottomTriggerZone) {
+      // Near bottom of screen, scroll down
+      const maxScrollY = 24 * 80 - viewportHeight;
+      const scrollAmount = (currentScreenY - bottomTriggerZone) * 0.5;
+      newScrollY = Math.min(maxScrollY, scrollY + scrollAmount);
+      shouldScroll = true;
+    }
+
+    // Apply smooth scrolling with throttling
+    if (shouldScroll && Math.abs(newScrollY - scrollY) > 2) {
+      const now = Date.now();
+      if (now - lastScrollTime.current > 16) { // Throttle to ~60fps
+        scrollViewRef.current?.scrollTo({
+          y: newScrollY,
+          animated: false,
+        });
+        lastScrollTime.current = now;
+      }
+    }
+
+    // Haptic feedback every hour (based on exact position)
+    const totalMinutes = (clampedY / 80) * 60;
+    const currentHour = Math.floor(totalMinutes / 60);
+    const currentMinute = Math.round(totalMinutes % 60);
+
+    if (currentHour !== lastHapticHour && currentMinute === 0) {
+      HapticFeedback.trigger('impactLight', hapticOptions);
+      setLastHapticHour(currentHour);
+    }
+  };
+
+  const onPanGestureStateChange = (event: any) => {
+    const { state, absoluteY } = event.nativeEvent;
+
+    if (state === State.BEGAN) {
+      // Light haptic feedback when gesture starts
+      HapticFeedback.trigger('impactLight', hapticOptions);
+
+      // Mark that user is actively gesturing
+      isUserGesturing.current = true;
+
+      // Calculate initial position with exact precision
+      const timeGridTop = 150;
+      const relativeY = absoluteY - timeGridTop + scrollY;
+      const clampedY = Math.max(0, Math.min(24 * 80 - 2, relativeY));
+
+      setMarkerY(clampedY);
+      setMarkerTime(formatTimeFromPosition(clampedY));
+      setIsGestureActive(true);
+      setLastHapticHour(-1); // Reset haptic tracking
+
+      // Simple fade in animation only (no scaling)
+      Animated.timing(markerOpacity, {
+        toValue: 1,
+        duration: 100,
+        useNativeDriver: false,
+      }).start();
+    } else if (state === State.END || state === State.CANCELLED || state === State.FAILED) {
+      setIsGestureActive(false);
+
+      // Mark that user is no longer gesturing
+      isUserGesturing.current = false;
+
+      // Simple fade out animation
+      Animated.timing(markerOpacity, {
+        toValue: 0,
+        duration: 150,
+        useNativeDriver: false,
+      }).start();
+    } else if (state === State.ACTIVE) {
+      onPanGestureEvent(event);
+    }
+  };
+
   const renderSubjectCard = (
     subject: Subject,
     groupIndex: number,
@@ -524,6 +679,7 @@ const TimeTable: React.FC<TimeTableProps> = ({
         // bounces={false}
         onScroll={handleScroll}
         scrollEventThrottle={16}
+        scrollEnabled={!isGestureActive} // Disable native scrolling during gesture interaction
       >
         <View style={styles.timeGrid}>
           {/* Transparent touchable background to ensure scrolling works everywhere */}
@@ -533,21 +689,32 @@ const TimeTable: React.FC<TimeTableProps> = ({
             onPress={handleTimeTableClick}
           />
 
-          {/* Time labels */}
-          <View style={styles.timeLabelsContainer}>
-            {hours.map(({hour, display}, index) => (
-              <View key={hour} style={styles.timeSlot}>
-                {/* Only show time label for every hour, positioned at the top border */}
-                <Text
-                  style={[
-                    styles.timeLabel,
-                    {marginTop: index === 0 ? 6 : -6},
-                  ]}>
-                  {display}
-                </Text>
-              </View>
-            ))}
-          </View>
+          {/* Time labels with gesture handler */}
+          <PanGestureHandler
+            onGestureEvent={onPanGestureEvent}
+            onHandlerStateChange={onPanGestureStateChange}
+            activeOffsetY={[-3, 3]}
+            failOffsetX={[-15, 15]}
+            shouldCancelWhenOutside={false}
+            enableTrackpadTwoFingerGesture={false}
+            minPointers={1}
+            maxPointers={1}
+          >
+            <View style={styles.timeLabelsContainer}>
+              {hours.map(({hour, display}, index) => (
+                <View key={hour} style={styles.timeSlot}>
+                  {/* Only show time label for every hour, positioned at the top border */}
+                  <Text
+                    style={[
+                      styles.timeLabel,
+                      {marginTop: index === 0 ? 6 : -6},
+                    ]}>
+                    {display}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </PanGestureHandler>
 
           {/* Hour dividers */}
           <View style={styles.hourDividers}>
@@ -586,6 +753,26 @@ const TimeTable: React.FC<TimeTableProps> = ({
 
           {/* Time indicator for selected subject */}
           {renderTimeIndicator()}
+
+          {/* Floating time marker for gesture interaction */}
+          {isGestureActive && (
+            <Animated.View
+              style={[
+                styles.floatingTimeMarker,
+                {
+                  top: markerY,
+                  opacity: markerOpacity,
+                },
+              ]}
+              pointerEvents="none"
+            >
+              <View style={styles.floatingTimeMarkerLine} />
+              <View style={styles.floatingTimeMarkerLabel}>
+                <Text style={styles.floatingTimeMarkerText}>{markerTime}</Text>
+              </View>
+              <View style={styles.floatingTimeMarkerDot} />
+            </Animated.View>
+          )}
         </View>
       </ScrollView>
 
@@ -863,6 +1050,76 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     textAlign: 'center',
+  },
+  floatingTimeMarker: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    zIndex: 35,
+  },
+  floatingTimeMarkerLine: {
+    position: 'absolute',
+    left: 80,
+    right: 0,
+    height: 3,
+    backgroundColor: '#9CA3AF', // Darker greyish color
+    borderRadius: 2,
+    shadowColor: '#9CA3AF',
+    shadowOffset: {
+      width: 0,
+      height: 0,
+    },
+    shadowOpacity: 0.6,
+    shadowRadius: 4,
+    elevation: 8,
+  },
+  floatingTimeMarkerLabel: {
+    position: 'absolute',
+    left: 4,
+    width: 72,
+    backgroundColor: '#F8F9FA', // Off-white to match the line
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 10,
+    borderWidth: 2,
+    borderColor: '#2B2D31', // Off-black border
+  },
+  floatingTimeMarkerText: {
+    color: '#2B2D31', // Off-black text for better contrast on off-white background
+    fontSize: 11,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  floatingTimeMarkerDot: {
+    position: 'absolute',
+    left: 74,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#2B2D31', // Off-black background
+    borderWidth: 3,
+    borderColor: '#F8F9FA', // Off-white border
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 10,
   },
 });
 
