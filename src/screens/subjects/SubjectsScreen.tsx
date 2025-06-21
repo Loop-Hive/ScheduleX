@@ -90,6 +90,8 @@ const SubjectsScreen: React.FC<SubjectsScreenProps> = ({
               limitType={card.limitType}
               handleViewDetails={handleViewDetails}
               delay={150 * index}
+              days={card.days}
+              defaultClassroom={card.defaultClassroom}
             />
           ))}
         {registers[activeRegister].card_size === 'small' &&
@@ -104,6 +106,8 @@ const SubjectsScreen: React.FC<SubjectsScreenProps> = ({
               tagColor={registers[activeRegister]?.color || card.tagColor}
               cardRegister={activeRegister}
               handleMenuOpen={handleMenuOpen}
+              days={card.days}
+              defaultClassroom={card.defaultClassroom}
             />
           ))}
 

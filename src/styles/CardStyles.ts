@@ -58,6 +58,11 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: '#fff',
   },
+  miniClassroomText: {
+    fontSize: 10,
+    color: '#E0E0E0',
+    marginTop: 2,
+  },
   ratioBox: {
     flex: 1,
     flexDirection: 'row',
@@ -94,6 +99,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#fff',
     maxWidth: width > 550 ? 500 - 150 : width * 0.92 - 150,
+  },
+  classroomText: {
+    fontSize: 12,
+    color: '#E0E0E0',
+    maxWidth: width > 550 ? 500 - 150 : width * 0.92 - 150,
+    marginTop: 2,
   },
   leftBox: {
     display: 'flex',

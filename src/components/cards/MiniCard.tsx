@@ -3,6 +3,8 @@ import {View, Text, TouchableOpacity, Image} from 'react-native';
 import styles from '../../styles/CardStyles';
 import MiniConicGradient from './MiniConicGradient';
 import useStore from '../../store/store';
+import {Days, Slots} from '../../types/cards';
+
 interface CardProps {
   id: number;
   title: string;
@@ -12,6 +14,8 @@ interface CardProps {
   tagColor: string;
   cardRegister: number;
   handleMenuOpen: (r: number, c: number) => void;
+  days: Days;
+  defaultClassroom?: string;
 }
 const MiniCard: React.FC<CardProps> = ({
   id,
@@ -22,6 +26,8 @@ const MiniCard: React.FC<CardProps> = ({
   tagColor,
   cardRegister,
   handleMenuOpen,
+  days,
+  defaultClassroom,
 }) => {
   const {markPresent, markAbsent} = useStore();
   const [percentage, setPercentage] = useState(0);
@@ -59,6 +65,26 @@ const MiniCard: React.FC<CardProps> = ({
     };
     setColor();
   }, [percentage, target_percentage]);
+
+  // Helper function to get unique classrooms from all slots
+  const getUniqueClassrooms = () => {
+    const classrooms = new Set<string>();
+    Object.values(days).forEach(slots => {
+      slots.forEach((slot: Slots) => {
+        if (slot.roomName) {
+          classrooms.add(slot.roomName);
+        }
+      });
+    });
+    // Also check defaultClassroom if no slots have classroom info
+    if (classrooms.size === 0 && defaultClassroom) {
+      classrooms.add(defaultClassroom);
+    }
+    return Array.from(classrooms);
+  };
+
+  const uniqueClassrooms = getUniqueClassrooms();
+
   return (
     <View style={[styles.cardContainer, {backgroundColor: cardColor}]}>
       <View style={styles.miniHeader}>
@@ -67,6 +93,11 @@ const MiniCard: React.FC<CardProps> = ({
         <Text style={styles.miniHeaderTitle}>
           {title.length > 8 ? title.substring(0, 8) + '..' : title}
         </Text>
+        {uniqueClassrooms.length > 0 && (
+          <Text style={styles.miniClassroomText}>
+            📍 {uniqueClassrooms[0]}
+          </Text>
+        )}
       </View>
       <View>
         <Text style={styles.miniAttendanceCount}>

@@ -157,7 +157,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
           {convertToUTM(event.startTime)} - {convertToUTM(event.endTime)}
         </Text>
         {event.roomName && (
-          <Text style={styles.eventRoom}>📍 {event.roomName}</Text>
+          <Text style={styles.eventRoom}>{event.roomName}</Text>
         )}
       </View>
     </TouchableOpacity>

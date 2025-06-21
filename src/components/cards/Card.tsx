@@ -3,6 +3,7 @@ import {View, Text, TouchableOpacity, Image, ToastAndroid} from 'react-native';
 import styles from '../../styles/CardStyles';
 import ConicGradient from './ConicGradient';
 import useStore from '../../store/store';
+import {Days, Slots} from '../../types/cards';
 
 import * as Animatable from 'react-native-animatable';
 
@@ -20,6 +21,8 @@ interface CardProps {
   limitType: string;
   handleViewDetails: (r: number, c: number) => void;
   delay: number;
+  days: Days;
+  defaultClassroom?: string;
 }
 
 const Card: React.FC<CardProps> = ({
@@ -36,6 +39,8 @@ const Card: React.FC<CardProps> = ({
   handleMenuOpen,
   handleViewDetails,
   delay,
+  days,
+  defaultClassroom,
 }) => {
   const {markPresent, markAbsent} = useStore();
   const [percentage, setPercentage] = useState(0);
@@ -129,6 +134,25 @@ const Card: React.FC<CardProps> = ({
     setColor();
   }, [percentage, target_percentage]);
 
+  // Helper function to get unique classrooms from all slots
+  const getUniqueClassrooms = () => {
+    const classrooms = new Set<string>();
+    Object.values(days).forEach(slots => {
+      slots.forEach((slot: Slots) => {
+        if (slot.roomName) {
+          classrooms.add(slot.roomName);
+        }
+      });
+    });
+    // Also check defaultClassroom if no slots have classroom info
+    if (classrooms.size === 0 && defaultClassroom) {
+      classrooms.add(defaultClassroom);
+    }
+    return Array.from(classrooms);
+  };
+
+  const uniqueClassrooms = getUniqueClassrooms();
+
   return (
     <Animatable.View
       animation="zoomIn"
@@ -165,6 +189,11 @@ const Card: React.FC<CardProps> = ({
             )}
             {!hasLimit && (
               <Text style={styles.statusText}>Status: {cardStatus}</Text>
+            )}
+            {uniqueClassrooms.length > 0 && (
+              <Text style={styles.classroomText}>
+                📍 {uniqueClassrooms.join(', ')}
+              </Text>
             )}
           </View>
         </View>

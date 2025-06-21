@@ -32,6 +32,7 @@ export interface CardInterface {
   hasLimit: boolean;
   limit: number;
   limitType: string; // with-absent, without-absent
+  defaultClassroom?: string; // Default classroom when no slots exist
 }
 
 export interface SelectedDayCard {

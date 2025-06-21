@@ -21,6 +21,7 @@ import {
   convertToStartSeconds,
   convertToUTM,
 } from '../../utils/functions';
+import {getTextColorForBackground} from '../../types/allCardConstraint';
 // import Calendar from '../components/Calendar';
 import TimePicker from '../../components/TimePicker';
 import TagColorPicker from '../../components/TagColorPicker';
@@ -45,6 +46,7 @@ interface currDayTimeProps {
   isAM_start: boolean;
   endTime: string;
   isAM_end: boolean;
+  classroom: string;
 }
 
 const EditCard: React.FC = ({navigation, route}: any) => {
@@ -56,6 +58,7 @@ const EditCard: React.FC = ({navigation, route}: any) => {
     isAM_start: true,
     endTime: '12:00',
     isAM_end: false,
+    classroom: '',
   });
 
   const setStartAm = (value: boolean) => {
@@ -82,6 +85,12 @@ const EditCard: React.FC = ({navigation, route}: any) => {
       endTime: value,
     }));
   };
+  const setClassroom = (value: string) => {
+    setCurrDayTime(prev => ({
+      ...prev,
+      classroom: value,
+    }));
+  };
 
   const registerName = registers[card_register].name;
   const [card, setCard] = useState<CardInterface>({
@@ -104,6 +113,7 @@ const EditCard: React.FC = ({navigation, route}: any) => {
     hasLimit: false,
     limit: 0,
     limitType: 'with-absent',
+    defaultClassroom: '',
   });
   const [presents, setPresents] = useState(0);
   const [totals, setTotals] = useState(0);
@@ -235,6 +245,7 @@ const EditCard: React.FC = ({navigation, route}: any) => {
               currDayTime.isAM_start,
             ),
             end: convertTo24Hrs(currDayTime.endTime, currDayTime.isAM_end),
+            roomName: currDayTime.classroom || card.defaultClassroom || null,
           },
         ],
       },
@@ -242,6 +253,11 @@ const EditCard: React.FC = ({navigation, route}: any) => {
     if (Platform.OS === 'android') {
       ToastAndroid.show('New Slot Added', ToastAndroid.SHORT);
     }
+    // Reset classroom field after adding slot
+    setCurrDayTime(prev => ({
+      ...prev,
+      classroom: '',
+    }));
   };
 
   const handleRemoveTime = (day: string, dayTime: Slots) => {
@@ -294,6 +310,34 @@ const EditCard: React.FC = ({navigation, route}: any) => {
       return;
     }
 
+    // Create updated card with classroom info applied to all slots
+    const createUpdatedCardWithClassroom = (baseCard: CardInterface) => {
+      if (!currDayTime.classroom.trim()) return baseCard;
+
+      const updatedDays = { ...baseCard.days };
+      let hasSlots = false;
+
+      // Check if there are any slots and update them
+      Object.keys(updatedDays).forEach(day => {
+        if (updatedDays[day as keyof Days].length > 0) {
+          hasSlots = true;
+          updatedDays[day as keyof Days] = updatedDays[day as keyof Days].map(slot => ({
+            ...slot,
+            roomName: currDayTime.classroom.trim() || slot.roomName,
+          }));
+        }
+      });
+
+      // If no slots exist, store as defaultClassroom
+      return {
+        ...baseCard,
+        days: updatedDays,
+        defaultClassroom: currDayTime.classroom.trim()
+      };
+    };
+
+    const finalCard = createUpdatedCardWithClassroom(card);
+
     if (card.present !== presents || card.total !== totals) {
       Alert.alert(
         'Save Changes',
@@ -322,7 +366,7 @@ const EditCard: React.FC = ({navigation, route}: any) => {
                 });
               }
               const editedCard: CardInterface = {
-                ...card,
+                ...finalCard,
                 markedAt: newMarkings,
               };
 
@@ -337,9 +381,9 @@ const EditCard: React.FC = ({navigation, route}: any) => {
         {cancelable: false},
       );
     } else {
-      editCard(card_register, card, card_id);
+      editCard(card_register, finalCard, card_id);
 
-      navigation.navigate('Tab');
+      navigation.navigate('App');
       if (Platform.OS === 'android') {
         ToastAndroid.show('Changes Saved', ToastAndroid.SHORT);
       }
@@ -348,6 +392,32 @@ const EditCard: React.FC = ({navigation, route}: any) => {
   const handleNavigateBack = () => {
     navigation.goBack();
   };
+
+  // Helper function to get the most recent classroom from existing slots
+  const getMostRecentClassroom = () => {
+    const allSlots = Object.values(card.days).flat();
+    // Find the last slot with a classroom
+    for (let i = allSlots.length - 1; i >= 0; i--) {
+      if (allSlots[i].roomName) {
+        return allSlots[i].roomName;
+      }
+    }
+    // If no slots have classroom, check defaultClassroom
+    return card.defaultClassroom || '';
+  };
+
+  // Update classroom field when card data changes (for editing)
+  useEffect(() => {
+    if (card.id !== 1) { // Only for existing cards, not new ones
+      const recentClassroom = getMostRecentClassroom();
+      if (recentClassroom && currDayTime.classroom === '') {
+        setCurrDayTime(prev => ({
+          ...prev,
+          classroom: recentClassroom,
+        }));
+      }
+    }
+  }, [card]);
 
   return (
     <View style={styles.topContainer}>
@@ -427,6 +497,15 @@ const EditCard: React.FC = ({navigation, route}: any) => {
           }
         />
 
+        <Text style={styles.label}>Classroom</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Enter classroom (optional)"
+          placeholderTextColor="#999"
+          value={currDayTime.classroom}
+          onChangeText={setClassroom}
+        />
+
         <Text style={styles.label}>Add Slots</Text>
         <View style={styles.pickWrapper}>
           <View style={styles.pickerView}>
@@ -470,12 +549,16 @@ const EditCard: React.FC = ({navigation, route}: any) => {
           {Object.keys(card.days).map(day =>
             card.days[day as keyof Days].map((dayTime: Slots, index) => (
               <View key={index} style={styles.tabViewStyle}>
-                <TouchableOpacity key={dayTime.start} style={styles.tabButton}>
+                <TouchableOpacity
+                  key={dayTime.start}
+                  style={styles.tabButton}
+                >
                   <Text style={styles.tabLabel}>
                     {daysOfWeekMap[day].substring(0, 3)},{' '}
                     {convertToUTM(dayTime.start)}
                     {' - '}
                     {convertToUTM(dayTime.end)}
+                    {dayTime.roomName && `, ${dayTime.roomName}`}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -706,12 +789,14 @@ const styles = StyleSheet.create({
     minWidth: 160,
     marginBottom: 8,
     borderRadius: 8,
-    paddingLeft: 5,
-    paddingRight: 5,
+    paddingLeft: 10,
+    paddingRight: 10,
     backgroundColor: '#1F1F22',
+    height: 56, // Increased height for better visibility
   },
   picker: {
     color: '#fff',
+    height: 56, // Match container height
   },
   container3: {
     flex: 1,
