@@ -8,6 +8,7 @@ import {
   Dimensions,
   Animated,
   Image,
+  Modal,
 } from 'react-native';
 import {
   GestureHandlerRootView,
@@ -16,6 +17,7 @@ import {
 } from 'react-native-gesture-handler';
 import HapticFeedback from 'react-native-haptic-feedback';
 import {getTextColorForBackground} from '../../../types/allCardConstraint';
+import useStore from '../../../store/store';
 
 // Import arrow images
 const upArrowImage = require('../../../assets/icons/up-arrow.png');
@@ -34,6 +36,8 @@ interface Subject {
   present: number;
   total: number;
   dayOfWeek: number; // 0 = Sunday, 1 = Monday, etc.
+  cardId?: number; // Added for attendance tracking
+  registerId?: number; // Added for attendance tracking
 }
 
 interface TimeTableProps {
@@ -47,6 +51,8 @@ const TimeTable: React.FC<TimeTableProps> = ({
   selectedRegisters: _selectedRegisters,
   registerNames: _registerNames,
 }) => {
+  const {markPresent, markAbsent, registers, removeMarking} = useStore(); // Access attendance functions and register data
+
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState(new Date().getDay()); // Initialize with today
   const [selectedTabKey, setSelectedTabKey] = useState('today'); // Track which specific tab is selected
@@ -57,6 +63,25 @@ const TimeTable: React.FC<TimeTableProps> = ({
   const [scrollY, setScrollY] = useState(0); // Track current scroll position
   const [showScrollToNow, setShowScrollToNow] = useState(false); // Show "scroll to now" button
   const [currentTimeDirection, setCurrentTimeDirection] = useState<'up' | 'down'>('down'); // Where current time is relative to viewport
+
+  // State for attendance modal
+  const [showAttendanceModal, setShowAttendanceModal] = useState(false);
+  const [selectedSubjectForAttendance, setSelectedSubjectForAttendance] = useState<Subject | null>(null);
+
+  // State for disabled attendance message
+  const [showDisabledMessage, setShowDisabledMessage] = useState(false);
+
+  // State for clear confirmation dialog
+  const [showClearConfirmation, setShowClearConfirmation] = useState(false);
+
+  // State for toast notification
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState<'present' | 'absent'>('present');
+  const toastOpacity = useRef(new Animated.Value(0)).current;
+
+  // State to force re-render when attendance changes
+  const [attendanceUpdateTrigger, setAttendanceUpdateTrigger] = useState(0);
 
   // State for floating time marker
   const [isGestureActive, setIsGestureActive] = useState(false);
@@ -465,9 +490,222 @@ const TimeTable: React.FC<TimeTableProps> = ({
     };
   };
 
-  // Handle subject card click to show/hide time details
+  // Handle subject card click to show attendance modal
   const handleSubjectClick = (subjectId: string) => {
-    setSelectedSubjectId(prev => (prev === subjectId ? null : subjectId));
+    const subject = todaySubjects.find(s => s.id === subjectId);
+    if (subject) {
+      // Parse cardId and registerId from subject.id format: "${registerIdx}-${card.id}-${dayKey}-${slotIndex}"
+      const idParts = subject.id.split('-');
+      const registerId = parseInt(idParts[0], 10);
+      const cardId = parseInt(idParts[1], 10);
+
+      // Add the parsed IDs to the subject for attendance tracking
+      const subjectWithIds = {
+        ...subject,
+        registerId,
+        cardId
+      };
+
+      setSelectedSubjectForAttendance(subjectWithIds);
+      setShowAttendanceModal(true);
+    }
+  };
+
+  // Handle attendance actions
+  const handleMarkPresent = () => {
+    if (selectedSubjectForAttendance?.registerId !== undefined && selectedSubjectForAttendance?.cardId !== undefined) {
+      markPresent(selectedSubjectForAttendance.registerId, selectedSubjectForAttendance.cardId);
+      setShowAttendanceModal(false);
+      setSelectedSubjectForAttendance(null);
+      // Force re-render to show attendance indicator
+      setAttendanceUpdateTrigger(prev => prev + 1);
+    }
+  };
+
+  const handleMarkAbsent = () => {
+    if (selectedSubjectForAttendance?.registerId !== undefined && selectedSubjectForAttendance?.cardId !== undefined) {
+      markAbsent(selectedSubjectForAttendance.registerId, selectedSubjectForAttendance.cardId);
+      setShowAttendanceModal(false);
+      setSelectedSubjectForAttendance(null);
+      // Force re-render to show attendance indicator
+      setAttendanceUpdateTrigger(prev => prev + 1);
+    }
+  };
+
+  // Handle clear attendance for today only
+  const handleClearAttendance = () => {
+    setShowClearConfirmation(true);
+  };
+
+  // Confirm and execute clear attendance
+  const confirmClearAttendance = () => {
+    if (selectedSubjectForAttendance?.registerId !== undefined && selectedSubjectForAttendance?.cardId !== undefined) {
+      const registerId = selectedSubjectForAttendance.registerId;
+      const cardId = selectedSubjectForAttendance.cardId;
+
+      // Get today's date
+      const today = new Date();
+      const todayDateString = today.toDateString();
+
+      // Find the register and card
+      const register = registers[registerId];
+      if (register?.cards) {
+        const card = register.cards.find(c => c.id === cardId);
+        if (card) {
+          // Find all today's markings
+          const todayMarkings = card.markedAt.filter(marking => {
+            const markingDate = new Date(marking.date);
+            return markingDate.toDateString() === todayDateString;
+          });
+
+          console.log(`Found ${todayMarkings.length} markings to clear for ${selectedSubjectForAttendance.name}`);
+
+          if (todayMarkings.length > 0) {
+            // Remove all today's markings in reverse order to avoid ID shifting issues
+            // Sort by ID in descending order to remove highest IDs first
+            const markingsToRemove = [...todayMarkings].sort((a, b) => b.id - a.id);
+
+            markingsToRemove.forEach((marking, index) => {
+              console.log(`Removing marking ${index + 1}/${markingsToRemove.length}: ID ${marking.id}, isPresent: ${marking.isPresent}`);
+              try {
+                removeMarking(registerId, cardId, marking.id);
+              } catch (error) {
+                console.error(`Error removing marking ${marking.id}:`, error);
+              }
+            });
+
+            setShowClearConfirmation(false);
+            setShowAttendanceModal(false);
+            showToastNotification(`All attendance cleared for ${selectedSubjectForAttendance.name} today`, 'absent');
+            setSelectedSubjectForAttendance(null);
+            // Force re-render to hide attendance indicators
+            setAttendanceUpdateTrigger(prev => prev + 1);
+          } else {
+            console.log('No markings found to clear');
+            setShowClearConfirmation(false);
+          }
+        }
+      }
+    }
+  };
+
+  // Check if there's attendance marked for today that can be cleared
+  const canClearTodayAttendance = (): boolean => {
+    if (!selectedSubjectForAttendance || selectedTabKey !== 'today') return false;
+
+    const attendanceStatus = getTodayAttendanceStatus(selectedSubjectForAttendance);
+    return attendanceStatus !== null && (attendanceStatus.present > 0 || attendanceStatus.absent > 0);
+  };
+
+  // Check if attendance marking is allowed (only for today)
+  const isAttendanceAllowed = () => {
+    return selectedTabKey === 'today';
+  };
+
+  // Handle disabled attendance button clicks
+  const handleDisabledAttendance = () => {
+    const message = "Attendance cannot be marked for future classes.";
+
+    setToastMessage(message);
+    setToastType('absent'); // Use red color for warning
+    setShowDisabledMessage(true);
+
+    // Show the disabled message toast
+    Animated.sequence([
+      Animated.timing(toastOpacity, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.delay(2500), // Show for 2.5 seconds
+      Animated.timing(toastOpacity, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setShowDisabledMessage(false);
+    });
+  };
+
+  // Show toast notification
+  const showToastNotification = (message: string, type: 'present' | 'absent') => {
+    setToastMessage(message);
+    setToastType(type);
+    setShowToast(true);
+
+    // Animate in
+    Animated.sequence([
+      Animated.timing(toastOpacity, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.delay(2000), // Show for 2 seconds
+      Animated.timing(toastOpacity, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setShowToast(false);
+    });
+  };
+
+  // Convert 24-hour time to 12-hour AM/PM format
+  const formatTimeToAMPM = (time: string) => {
+    const [hours, minutes] = time.split(':').map(Number);
+    const period = hours >= 12 ? 'PM' : 'AM';
+    const displayHours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
+    return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
+  };
+
+  // Check today's attendance status for a subject - returns counts of present/absent
+  const getTodayAttendanceStatus = (subject: Subject): { present: number; absent: number } | null => {
+    // Only show indicators for today's tab
+    if (selectedTabKey !== 'today') return null;
+
+    // Parse subject ID to get registerId and cardId
+    const idParts = subject.id.split('-');
+    const registerId = parseInt(idParts[0], 10);
+    const cardId = parseInt(idParts[1], 10);
+
+    // Get today's date - need to check if any marking is from today
+    const today = new Date();
+    const todayDateString = today.toDateString(); // "Fri Jun 21 2025" format to match stored dates
+
+    // Find the register and card
+    const register = registers[registerId];
+    if (!register?.cards) {
+      console.log(`No register found for registerId: ${registerId}`);
+      return null;
+    }
+
+    const card = register.cards.find(c => c.id === cardId);
+    if (!card) {
+      console.log(`No card found for cardId: ${cardId} in register: ${registerId}`);
+      return null;
+    }
+
+    // Find all today's attendance markings
+    const todayMarkings = card.markedAt.filter(marking => {
+      const markingDate = new Date(marking.date);
+      return markingDate.toDateString() === todayDateString;
+    });
+
+    if (todayMarkings.length === 0) {
+      console.log(`No markings found for today (${todayDateString})`);
+      return null;
+    }
+
+    // Count present and absent markings
+    const presentCount = todayMarkings.filter(marking => marking.isPresent).length;
+    const absentCount = todayMarkings.filter(marking => !marking.isPresent).length;
+
+    console.log(`Found markings for ${subject.name}: ${presentCount} present, ${absentCount} absent`);
+    console.log('attendanceUpdateTrigger:', attendanceUpdateTrigger); // Ensure re-render trigger
+
+    return { present: presentCount, absent: absentCount };
   };
 
   // Handle clicking anywhere else to hide time details
@@ -671,6 +909,53 @@ const TimeTable: React.FC<TimeTableProps> = ({
         }}
         activeOpacity={0.8}>
         <View style={styles.subjectContent}>
+          {/* Attendance indicators - show present and absent counts */}
+          {(() => {
+            const attendanceStatus = getTodayAttendanceStatus(subject);
+            console.log(`Rendering indicators for ${subject.name}:`, attendanceStatus);
+            if (!attendanceStatus || (attendanceStatus.present === 0 && attendanceStatus.absent === 0)) return null;
+
+            const indicators = [];
+
+            // Add present indicator if there are present markings
+            if (attendanceStatus.present > 0) {
+              indicators.push(
+                <View
+                  key="present"
+                  style={[
+                    styles.attendanceIndicator,
+                    styles.attendancePresent,
+                    indicators.length > 0 && { top: 6 + (indicators.length * 16) } // Stack vertically if multiple
+                  ]}
+                >
+                  {attendanceStatus.present > 1 && (
+                    <Text style={styles.attendanceCount}>{attendanceStatus.present}</Text>
+                  )}
+                </View>
+              );
+            }
+
+            // Add absent indicator if there are absent markings
+            if (attendanceStatus.absent > 0) {
+              indicators.push(
+                <View
+                  key="absent"
+                  style={[
+                    styles.attendanceIndicator,
+                    styles.attendanceAbsent,
+                    indicators.length > 0 && { top: 6 + (indicators.length * 16) } // Stack vertically if multiple
+                  ]}
+                >
+                  {attendanceStatus.absent > 1 && (
+                    <Text style={styles.attendanceCount}>{attendanceStatus.absent}</Text>
+                  )}
+                </View>
+              );
+            }
+
+            return indicators;
+          })()}
+
           <Text
             style={[
               styles.subjectName,
@@ -907,6 +1192,142 @@ const TimeTable: React.FC<TimeTableProps> = ({
             style={styles.scrollToNowButtonImage}
           />
         </TouchableOpacity>
+      )}
+
+      {/* Attendance Modal */}
+      <Modal
+        visible={showAttendanceModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => {
+          setShowAttendanceModal(false);
+          setSelectedSubjectForAttendance(null);
+        }}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Quick Attendance</Text>
+              <Text style={styles.modalSubjectName}>
+                {selectedSubjectForAttendance?.name}
+              </Text>
+              <Text style={styles.modalSubjectTime}>
+                {selectedSubjectForAttendance &&
+                  `${formatTimeToAMPM(selectedSubjectForAttendance.startTime)} - ${formatTimeToAMPM(selectedSubjectForAttendance.endTime)}`
+                }
+              </Text>
+            </View>
+
+            <View style={styles.modalButtonContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.modalButton,
+                  styles.presentButton,
+                  !isAttendanceAllowed() && styles.modalButtonDisabled
+                ]}
+                onPress={isAttendanceAllowed() ? handleMarkPresent : handleDisabledAttendance}
+                activeOpacity={0.8}>
+                <Text style={[
+                  styles.modalButtonText,
+                  !isAttendanceAllowed() && styles.modalButtonTextDisabled
+                ]}>
+                  ✓ Present
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.modalButton,
+                  styles.absentButton,
+                  !isAttendanceAllowed() && styles.modalButtonDisabled
+                ]}
+                onPress={isAttendanceAllowed() ? handleMarkAbsent : handleDisabledAttendance}
+                activeOpacity={0.8}>
+                <Text style={[
+                  styles.modalButtonText,
+                  !isAttendanceAllowed() && styles.modalButtonTextDisabled
+                ]}>
+                  ✗ Absent
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Clear Attendance Button - only show for today if attendance is already marked */}
+            {canClearTodayAttendance() && (
+              <TouchableOpacity
+                style={styles.modalClearButton}
+                onPress={handleClearAttendance}
+                activeOpacity={0.8}>
+                <Text style={styles.modalClearButtonText}>🗑️ Clear Attendance</Text>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity
+              style={styles.modalCancelButton}
+              onPress={() => {
+                setShowAttendanceModal(false);
+                setSelectedSubjectForAttendance(null);
+              }}
+              activeOpacity={0.8}>
+              <Text style={styles.modalCancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Clear Attendance Confirmation Dialog */}
+      <Modal
+        visible={showClearConfirmation}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowClearConfirmation(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.confirmationModalContent}>
+            <View style={styles.confirmationHeader}>
+              <Text style={styles.confirmationTitle}>Clear Attendance</Text>
+              <Text style={styles.confirmationMessage}>
+                Are you sure you want to clear all attendance for{' '}
+                <Text style={styles.confirmationSubjectName}>
+                  {selectedSubjectForAttendance?.name}
+                </Text>{' '}
+                today? This action cannot be undone.
+              </Text>
+            </View>
+
+            <View style={styles.confirmationButtonContainer}>
+              <TouchableOpacity
+                style={styles.confirmationCancelButton}
+                onPress={() => setShowClearConfirmation(false)}
+                activeOpacity={0.8}>
+                <Text style={styles.confirmationCancelText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.confirmationConfirmButton}
+                onPress={confirmClearAttendance}
+                activeOpacity={0.8}>
+                <Text style={styles.confirmationConfirmText}>Clear All</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Toast Notification */}
+      {(showToast || showDisabledMessage) && (
+        <Animated.View
+          style={[
+            styles.toastContainer,
+            { opacity: toastOpacity },
+            toastType === 'present' ? styles.toastPresent : styles.toastAbsent
+          ]}
+          pointerEvents="none">
+          <View style={styles.toastContent}>
+            <Text style={styles.toastIcon}>
+              {showDisabledMessage ? '⚠️' : (toastType === 'present' ? '✓' : '✗')}
+            </Text>
+            <Text style={styles.toastText}>{toastMessage}</Text>
+          </View>
+        </Animated.View>
       )}
     </GestureHandlerRootView>
   );
@@ -1260,6 +1681,250 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 10,
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#27272A',
+    borderRadius: 16,
+    padding: 24,
+    width: screenWidth * 0.85,
+    maxWidth: 320,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 16,
+  },
+  modalHeader: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#F4F4F5',
+    marginBottom: 8,
+  },
+  modalSubjectName: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#E4E4E7',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  modalSubjectTime: {
+    fontSize: 14,
+    color: '#A1A1AA',
+    textAlign: 'center',
+  },
+  modalWarningText: {
+    fontSize: 12,
+    color: '#F59E0B',
+    textAlign: 'center',
+    marginTop: 8,
+    fontWeight: '500',
+  },
+  modalButtonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  presentButton: {
+    backgroundColor: '#22C55E',
+  },
+  absentButton: {
+    backgroundColor: '#EF4444',
+  },
+  modalButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  modalButtonDisabled: {
+    backgroundColor: '#4B5563', // Grayed out background
+    opacity: 0.6,
+  },
+  modalButtonTextDisabled: {
+    color: '#9CA3AF', // Grayed out text
+  },
+  modalClearButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F59E0B',
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  modalClearButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#FFFFFF',
+  },
+  modalCancelButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCancelText: {
+    fontSize: 16,
+    color: '#A1A1AA',
+    fontWeight: '500',
+  },
+  // Toast styles
+  toastContainer: {
+    position: 'absolute',
+    top: 100,
+    left: 20,
+    right: 20,
+    zIndex: 1000,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 16,
+  },
+  toastPresent: {
+    backgroundColor: '#22C55E',
+  },
+  toastAbsent: {
+    backgroundColor: '#EF4444',
+  },
+  toastContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  toastIcon: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginRight: 12,
+  },
+  toastText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#FFFFFF',
+    flex: 1,
+  },
+  // Attendance indicator styles
+  attendanceIndicator: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    zIndex: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.8)',
+  },
+  attendancePresent: {
+    backgroundColor: '#22C55E', // Green for present
+  },
+  attendanceAbsent: {
+    backgroundColor: '#EF4444', // Red for absent
+  },
+  attendanceCount: {
+    fontSize: 8,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    lineHeight: 10,
+  },
+  // Confirmation dialog styles
+  confirmationModalContent: {
+    backgroundColor: '#27272A',
+    borderRadius: 16,
+    padding: 24,
+    width: screenWidth * 0.85,
+    maxWidth: 350,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 16,
+  },
+  confirmationHeader: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  confirmationTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#F4F4F5',
+    marginBottom: 12,
+  },
+  confirmationMessage: {
+    fontSize: 16,
+    color: '#E4E4E7',
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  confirmationSubjectName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#6366F1',
+  },
+  confirmationButtonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  confirmationCancelButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#4B5563',
+  },
+  confirmationCancelText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#F4F4F5',
+  },
+  confirmationConfirmButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#EF4444',
+  },
+  confirmationConfirmText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });
 
