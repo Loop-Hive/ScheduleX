@@ -80,6 +80,10 @@ const TimeTable: React.FC<TimeTableProps> = ({
   const [toastType, setToastType] = useState<'present' | 'absent'>('present');
   const toastOpacity = useRef(new Animated.Value(0)).current;
 
+  // State for notification animation
+  const notificationOpacity = useRef(new Animated.Value(0)).current;
+  const notificationAnimationRef = useRef<Animated.CompositeAnimation | null>(null);
+
   // State for simple notification system
   const [notificationData, setNotificationData] = useState<{
     message: string;
@@ -410,12 +414,19 @@ const TimeTable: React.FC<TimeTableProps> = ({
         debouncedCheckAndShowNotification();
       }, 200);
     }
-  }, [attendanceUpdateTrigger, hasInitialized]);  // Cleanup notification timeout on unmount
+  }, [attendanceUpdateTrigger, hasInitialized]);  // Cleanup notification timeout and animation on unmount
   useEffect(() => {
     return () => {
+      // Cancel any ongoing animation
+      if (notificationAnimationRef.current) {
+        notificationAnimationRef.current.stop();
+        notificationAnimationRef.current = null;
+      }
       if (simpleTimeoutRef.current) {
         clearTimeout(simpleTimeoutRef.current);
       }
+      // Reset notification animation to prevent glitches
+      notificationOpacity.setValue(0);
     };
   }, []);
 
@@ -423,19 +434,43 @@ const TimeTable: React.FC<TimeTableProps> = ({
   const showNotification = (message: string, type: 'no-events' | 'all-completed') => {
     console.log('Showing notification:', message, type);
 
+    // Cancel any ongoing animation to prevent overlapping
+    if (notificationAnimationRef.current) {
+      notificationAnimationRef.current.stop();
+      notificationAnimationRef.current = null;
+    }
+
     // Clear any existing timeout
     if (simpleTimeoutRef.current) {
       clearTimeout(simpleTimeoutRef.current);
     }
 
-    // Set new notification
+    // Reset animation value and set new notification
+    notificationOpacity.setValue(0);
     setNotificationData({ message, type, visible: true });
 
-    // Auto hide after 1.2 seconds
-    simpleTimeoutRef.current = setTimeout(() => {
-      console.log('Hiding notification after timeout');
-      setNotificationData(null);
-    }, 1200);
+    // Smooth fade in and out animation with shorter duration to prevent overlap
+    const animation = Animated.sequence([
+      Animated.timing(notificationOpacity, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.delay(800), // Reduced from 1200ms to 800ms to prevent overlap
+      Animated.timing(notificationOpacity, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]);
+
+    notificationAnimationRef.current = animation;
+    animation.start((finished) => {
+      if (finished) {
+        setNotificationData(null);
+        notificationAnimationRef.current = null;
+      }
+    });
   };
 
   // Debounced version to prevent rapid notifications
@@ -518,7 +553,7 @@ const TimeTable: React.FC<TimeTableProps> = ({
       });
 
       if (allClassesCompleted && currentDaySubjects.length > 0) {
-        const message = currentDaySubjects.length === 1 ? 'Class completed' : 'All classes completed';
+        const message = 'All classes completed';
         console.log('Showing completion notification:', message); // Debug log
         showNotification(message, 'all-completed');
         return;
@@ -1352,11 +1387,12 @@ const TimeTable: React.FC<TimeTableProps> = ({
 
       {/* Simple Schedule Status Notification */}
       {notificationData && notificationData.visible && (
-        <View
+        <Animated.View
           style={[
             styles.scheduleNotificationContainer,
             {
-              top: 120, // Fixed position at top
+              bottom: 130, // Position at bottom, above floating action button
+              opacity: notificationOpacity,
             }
           ]}
         >
@@ -1371,7 +1407,7 @@ const TimeTable: React.FC<TimeTableProps> = ({
               {notificationData.message}
             </Text>
           </View>
-        </View>
+        </Animated.View>
       )}
 
       {/* Scroll to Now button - only show for Today tab when user has scrolled away from current time */}
