@@ -346,12 +346,19 @@ const TimeTable: React.FC<TimeTableProps> = ({
     return start1 < end2 && start2 < end1;
   };
 
-  // Group overlapping subjects together
+  // Group overlapping subjects together for side-by-side placement (Google Calendar style)
   const getSubjectGroups = (): Subject[][] => {
     const groups: Subject[][] = [];
     const processed = new Set<string>();
 
-    todaySubjects.forEach(subject => {
+    // Sort subjects by start time to improve visual arrangement
+    const sortedSubjects = [...todaySubjects].sort((a, b) => {
+      const timeA = parseInt(a.startTime.split(':')[0]) * 60 + parseInt(a.startTime.split(':')[1]);
+      const timeB = parseInt(b.startTime.split(':')[0]) * 60 + parseInt(b.startTime.split(':')[1]);
+      return timeA - timeB;
+    });
+
+    sortedSubjects.forEach(subject => {
       if (processed.has(subject.id)) return;
 
       const group = [subject];
@@ -361,7 +368,7 @@ const TimeTable: React.FC<TimeTableProps> = ({
       let foundNewOverlap = true;
       while (foundNewOverlap) {
         foundNewOverlap = false;
-        todaySubjects.forEach(otherSubject => {
+        sortedSubjects.forEach(otherSubject => {
           if (processed.has(otherSubject.id)) return;
 
           // Check if this subject overlaps with any subject in the current group
@@ -376,6 +383,13 @@ const TimeTable: React.FC<TimeTableProps> = ({
           }
         });
       }
+
+      // Sort group by start time for consistent positioning
+      group.sort((a, b) => {
+        const timeA = parseInt(a.startTime.split(':')[0]) * 60 + parseInt(a.startTime.split(':')[1]);
+        const timeB = parseInt(b.startTime.split(':')[0]) * 60 + parseInt(b.startTime.split(':')[1]);
+        return timeA - timeB;
+      });
 
       groups.push(group);
     });
@@ -398,25 +412,56 @@ const TimeTable: React.FC<TimeTableProps> = ({
     // Calculate exact positions to align with time grid lines
     const startPosition = (startHour + startMinutes / 60) * 80;
     const endPosition = (endHour + endMinutes / 60) * 80;
-    const height = endPosition - startPosition;
 
-    // Calculate width and position based on group overlaps
-    const cardWidth =
-      totalInGroup > 1
-        ? (screenWidth - 80) / totalInGroup - 4
-        : screenWidth - 84;
-    const leftOffset =
-      totalInGroup > 1
-        ? positionInGroup * ((screenWidth - 80) / totalInGroup)
-        : 0;
+    // Add small vertical spacing to prevent overlapping of adjacent subjects
+    const verticalSpacing = 1; // Small gap between vertically adjacent subjects
+    const adjustedHeight = Math.max(endPosition - startPosition - verticalSpacing, 20); // Minimum height of 20
+
+    // Google Calendar-inspired width calculation - NO STACKING, side-by-side placement
+    // Key principles:
+    // 1. Events are placed side by side, NOT stacked on top of each other
+    // 2. Width is proportional: totalAvailableWidth / numberOfOverlappingEvents
+    // 3. Minimum width is enforced for readability
+    // 4. Events maintain their full height to show duration clearly
+    const availableWidth = screenWidth - 80; // Total available width excluding time labels
+    const minCardWidth = 80; // Minimum width for readability in overlapping scenarios
+    const horizontalSpacing = 1; // Small gap between side-by-side events
+
+    let cardWidth: number;
+    let leftOffset: number;
+
+    if (totalInGroup === 1) {
+      // Single event: use full available width for maximum visibility
+      cardWidth = availableWidth - 4; // Small margin to prevent edge touching
+      leftOffset = 0;
+    } else {
+      // Multiple overlapping events: divide space equally, side by side
+      const spacePerEvent = (availableWidth - (totalInGroup - 1) * horizontalSpacing) / totalInGroup;
+      cardWidth = Math.max(minCardWidth, spacePerEvent);
+      leftOffset = positionInGroup * (cardWidth + horizontalSpacing);
+
+      // If calculated width is too small, use minimum and allow slight overlap
+      if (cardWidth < minCardWidth) {
+        cardWidth = minCardWidth;
+        // Recalculate positions with overlap
+        const totalNeededWidth = totalInGroup * minCardWidth;
+        const overflowWidth = totalNeededWidth - availableWidth;
+        const overlapPerGap = totalInGroup > 1 ? overflowWidth / (totalInGroup - 1) : 0;
+        leftOffset = positionInGroup * (minCardWidth - overlapPerGap);
+      }
+    }
+
+    // Ensure events don't overflow container
+    const maxLeft = availableWidth - cardWidth;
+    leftOffset = Math.min(leftOffset, Math.max(0, maxLeft));
 
     return {
       position: 'absolute' as const,
-      top: startPosition, // Remove offset for exact alignment
-      left: 80 + leftOffset + 2, // Minimal left margin
-      width: cardWidth,
-      height: height, // Exact height without reduction
-      zIndex: 20,
+      top: startPosition,
+      left: 80 + leftOffset + 2, // 2px margin from time labels
+      width: Math.floor(cardWidth), // Ensure integer width
+      height: adjustedHeight,
+      zIndex: 20, // Same z-index for all events (no layering)
     };
   };
 
@@ -568,14 +613,57 @@ const TimeTable: React.FC<TimeTableProps> = ({
     const textColor = getTextColorForBackground(subject.color);
     const isSelected = selectedSubjectId === subject.id;
 
+    // Calculate if this is a narrow card to adjust text rendering
+    const cardStyle = getSubjectStyle(subject, groupIndex, positionInGroup, totalInGroup);
+    const isNarrowCard = cardStyle.width < 160;
+    const isVeryNarrow = cardStyle.width < 130;
+
+    // Helper function to format subject name for better word wrapping
+    const formatSubjectName = (name: string, width: number) => {
+      const words = name.split(' ');
+
+      if (words.length === 1) {
+        // Single word - use as is
+        return name;
+      }
+
+      // For narrow cards, try to break into lines
+      if (width < 130) {
+        // Very narrow: show first word only with ellipsis if multiple words
+        return words.length > 1 ? `${words[0]}...` : words[0];
+      } else if (width < 160) {
+        // Narrow: try to fit 2-3 words per line
+        if (words.length === 2) {
+          return name; // Let React Native handle the wrapping
+        } else if (words.length >= 3) {
+          // Put first 1-2 words on first line, rest on second
+          const firstLine = words.slice(0, 2).join(' ');
+          const secondLine = words.slice(2).join(' ');
+          return `${firstLine}\n${secondLine}`;
+        }
+      }
+
+      // For wider cards, allow natural word wrapping
+      return name;
+    };
+
+    const formattedName = formatSubjectName(subject.name, cardStyle.width);
+    const shouldUseWordWrapping = cardStyle.width >= 130 && subject.name.includes(' ');
+
     return (
       <TouchableOpacity
         key={subject.id}
         style={[
           styles.subjectCard,
-          getSubjectStyle(subject, groupIndex, positionInGroup, totalInGroup),
+          cardStyle,
           {backgroundColor: subject.color},
           isSelected && styles.subjectCardSelected,
+          isNarrowCard && styles.subjectCardNarrow,
+          // Add subtle border for overlapping events to distinguish them
+          totalInGroup > 1 && {
+            borderWidth: 1,
+            borderColor: 'rgba(255, 255, 255, 0.3)',
+          },
         ]}
         onPress={e => {
           e.stopPropagation();
@@ -584,15 +672,36 @@ const TimeTable: React.FC<TimeTableProps> = ({
         activeOpacity={0.8}>
         <View style={styles.subjectContent}>
           <Text
-            style={[styles.subjectName, {color: textColor}]}
-            numberOfLines={2}>
-            {subject.name}
+            style={[
+              styles.subjectName,
+              {color: textColor},
+              isNarrowCard && styles.subjectNameNarrow,
+              isVeryNarrow && styles.subjectNameVeryNarrow,
+            ]}
+            numberOfLines={isVeryNarrow ? 1 : shouldUseWordWrapping ? 3 : 2}
+            adjustsFontSizeToFit={isVeryNarrow && !shouldUseWordWrapping}
+            minimumFontScale={isVeryNarrow ? 0.8 : 1.0}>
+            {formattedName}
           </Text>
-          {subject.classroom && (
+          {subject.classroom && !isVeryNarrow && (
             <Text
-              style={[styles.subjectClassroom, {color: textColor}]}
+              style={[
+                styles.subjectClassroom,
+                {color: textColor},
+                isNarrowCard && styles.subjectClassroomNarrow,
+              ]}
               numberOfLines={1}>
               📍 {subject.classroom}
+            </Text>
+          )}
+          {subject.classroom && isVeryNarrow && (
+            <Text
+              style={[
+                styles.subjectClassroomVeryNarrow,
+                {color: textColor},
+              ]}
+              numberOfLines={1}>
+              {subject.classroom}
             </Text>
           )}
         </View>
@@ -906,6 +1015,10 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
   },
+  subjectCardNarrow: {
+    padding: 6, // Reduced padding for narrow cards
+    borderRadius: 6,
+  },
   subjectContent: {
     flex: 1,
   },
@@ -914,9 +1027,28 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 2,
   },
+  subjectNameNarrow: {
+    fontSize: 12,
+    marginBottom: 1,
+    lineHeight: 14,
+  },
+  subjectNameVeryNarrow: {
+    fontSize: 11,
+    marginBottom: 0,
+    lineHeight: 13,
+  },
   subjectClassroom: {
     fontSize: 11,
     marginBottom: 4,
+  },
+  subjectClassroomNarrow: {
+    fontSize: 10,
+    marginBottom: 2,
+  },
+  subjectClassroomVeryNarrow: {
+    fontSize: 9,
+    marginBottom: 0,
+    opacity: 0.8,
   },
   dayTabsContainer: {
     backgroundColor: '#18181B',
