@@ -80,6 +80,19 @@ const TimeTable: React.FC<TimeTableProps> = ({
   const [toastType, setToastType] = useState<'present' | 'absent'>('present');
   const toastOpacity = useRef(new Animated.Value(0)).current;
 
+  // State for simple notification system
+  const [notificationData, setNotificationData] = useState<{
+    message: string;
+    type: 'no-events' | 'all-completed';
+    visible: boolean;
+  } | null>(null);
+  const [previousTabKey, setPreviousTabKey] = useState(selectedTabKey);
+  const [hasInitialized, setHasInitialized] = useState(false);
+  const [hasShownPopupForCurrentTab, setHasShownPopupForCurrentTab] = useState(false);
+  const [lastPopupTime, setLastPopupTime] = useState(0);
+  const [lastNotificationMessage, setLastNotificationMessage] = useState<string>('');
+  const simpleTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   // State to force re-render when attendance changes
   const [attendanceUpdateTrigger, setAttendanceUpdateTrigger] = useState(0);
 
@@ -352,6 +365,166 @@ const TimeTable: React.FC<TimeTableProps> = ({
   const todaySubjects = subjects.filter(
     subject => subject.dayOfWeek === selectedDay,
   );
+
+  // Initialize previous tab key to avoid initial popup
+  useEffect(() => {
+    setPreviousTabKey(selectedTabKey);
+    // Mark as initialized after a short delay to avoid initial popup
+    setTimeout(() => {
+      setHasInitialized(true);
+    }, 500);
+  }, []); // Only run once on mount
+
+  // Check schedule status and show popup when tab changes
+  useEffect(() => {
+    // Only show popup when tab actually changes and component has initialized
+    if (hasInitialized && previousTabKey !== selectedTabKey) {
+      setPreviousTabKey(selectedTabKey);
+      setHasShownPopupForCurrentTab(false); // Reset popup flag for new tab
+
+      // Short delay to allow UI to settle and then show new popup
+      setTimeout(() => {
+        checkAndShowNotification();
+      }, 100);
+    }
+  }, [selectedTabKey, hasInitialized, subjects, registers]);
+
+  // Also trigger popup when day changes (for non-today tabs)
+  useEffect(() => {
+    // Show popup for day changes only if it's not the initial load
+    if (hasInitialized && previousTabKey === selectedTabKey && previousTabKey !== null) {
+      setHasShownPopupForCurrentTab(false); // Reset popup flag for new day
+
+      // Short delay to allow UI to settle and then show new popup
+      setTimeout(() => {
+        debouncedCheckAndShowNotification();
+      }, 100);
+    }
+  }, [selectedDay, hasInitialized, subjects, registers]);
+
+  // Check when attendance changes but don't automatically show popup
+  useEffect(() => {
+    // Only check attendance changes for today's tab and only if popup hasn't been shown
+    if (hasInitialized && selectedTabKey === 'today' && !hasShownPopupForCurrentTab) {
+      setTimeout(() => {
+        debouncedCheckAndShowNotification();
+      }, 200);
+    }
+  }, [attendanceUpdateTrigger, hasInitialized]);  // Cleanup notification timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (simpleTimeoutRef.current) {
+        clearTimeout(simpleTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Simple notification functions
+  const showNotification = (message: string, type: 'no-events' | 'all-completed') => {
+    console.log('Showing notification:', message, type);
+
+    // Clear any existing timeout
+    if (simpleTimeoutRef.current) {
+      clearTimeout(simpleTimeoutRef.current);
+    }
+
+    // Set new notification
+    setNotificationData({ message, type, visible: true });
+
+    // Auto hide after 1.2 seconds
+    simpleTimeoutRef.current = setTimeout(() => {
+      console.log('Hiding notification after timeout');
+      setNotificationData(null);
+    }, 1200);
+  };
+
+  // Debounced version to prevent rapid notifications
+  const debouncedCheckAndShowNotification = () => {
+    // Simple 100ms delay
+    setTimeout(() => {
+      checkAndShowNotification();
+    }, 100);
+  };
+
+  const checkAndShowNotification = () => {
+    // Don't show notifications while dropdowns are open or modals are active
+    if (showAttendanceModal || showClearConfirmation) {
+      return;
+    }
+
+    // Get fresh subjects for selected day to avoid stale closure
+    const currentDaySubjects = subjects.filter(
+      subject => subject.dayOfWeek === selectedDay,
+    );
+
+    const today = new Date();
+    const todayDateString = today.toDateString();
+    const selectedDate = new Date();
+    selectedDate.setDate(today.getDate() + (selectedDay - today.getDay()));
+
+    const isToday = selectedTabKey === 'today';
+    const isTomorrow = selectedTabKey === 'tomorrow';
+
+    // No subjects for this day
+    if (currentDaySubjects.length === 0) {
+      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      const selectedDayName = dayNames[selectedDay];
+
+      let message = '';
+      if (isToday) {
+        message = 'No events today';
+      } else if (isTomorrow) {
+        message = 'No events tomorrow';
+      } else {
+        message = `No events on ${selectedDayName}`;
+      }
+
+      console.log('Showing notification:', message); // Debug log
+      showNotification(message, 'no-events');
+      return;
+    }
+
+    // Check if all today's classes are completed (only for today)
+    if (isToday && currentDaySubjects.length > 0) {
+      const allClassesCompleted = currentDaySubjects.every(subject => {
+        // Extract register and card info from subject ID
+        const idParts = subject.id.split('-');
+        if (idParts.length < 2) return false;
+
+        const registerId = parseInt(idParts[0], 10);
+        const cardId = parseInt(idParts[1], 10);
+
+        // Skip if invalid IDs
+        if (isNaN(registerId) || isNaN(cardId)) return false;
+
+        // Get the card from the register
+        const register = registers[registerId];
+        if (!register) return false;
+
+        const card = register.cards.find(c => c.id === cardId);
+        if (!card) return false;
+
+        // Check if this card has been marked today
+        const hasMarkingToday = card.markedAt.some(marking => {
+          try {
+            const markingDate = new Date(marking.date);
+            return markingDate.toDateString() === todayDateString;
+          } catch (e) {
+            return false;
+          }
+        });
+
+        return hasMarkingToday;
+      });
+
+      if (allClassesCompleted && currentDaySubjects.length > 0) {
+        const message = currentDaySubjects.length === 1 ? 'Class completed' : 'All classes completed';
+        console.log('Showing completion notification:', message); // Debug log
+        showNotification(message, 'all-completed');
+        return;
+      }
+    }
+  };
 
   // Check if two subjects overlap in time
   const subjectsOverlap = (subject1: Subject, subject2: Subject): boolean => {
@@ -1177,6 +1350,30 @@ const TimeTable: React.FC<TimeTableProps> = ({
         </View>
       </ScrollView>
 
+      {/* Simple Schedule Status Notification */}
+      {notificationData && notificationData.visible && (
+        <View
+          style={[
+            styles.scheduleNotificationContainer,
+            {
+              top: 120, // Fixed position at top
+            }
+          ]}
+        >
+          <View style={[
+            styles.scheduleNotification,
+            notificationData.type === 'no-events' ? styles.noEventsNotification : styles.completedNotification
+          ]}>
+            <Text style={styles.scheduleNotificationIcon}>
+              {notificationData.type === 'no-events' ? '📅' : '✅'}
+            </Text>
+            <Text style={styles.scheduleNotificationText}>
+              {notificationData.message}
+            </Text>
+          </View>
+        </View>
+      )}
+
       {/* Scroll to Now button - only show for Today tab when user has scrolled away from current time */}
       {showScrollToNow && selectedTabKey === 'today' && (
         <TouchableOpacity
@@ -1329,6 +1526,8 @@ const TimeTable: React.FC<TimeTableProps> = ({
           </View>
         </Animated.View>
       )}
+
+      {/* ...existing modals and components... */}
     </GestureHandlerRootView>
   );
 };
@@ -1925,6 +2124,54 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  // Schedule notification styles
+  scheduleNotificationContainer: {
+    position: 'absolute',
+    left: 20,
+    right: 20,
+    zIndex: 2000,
+    alignItems: 'center',
+    justifyContent: 'center',
+    pointerEvents: 'none',
+  },
+  scheduleNotification: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 12,
+    maxWidth: 220,
+    marginHorizontal: 20, // Add horizontal margins for proper edge spacing
+  },
+  noEventsNotification: {
+    backgroundColor: '#374151', // Neutral dark gray for no events
+    borderWidth: 1,
+    borderColor: '#6B7280',
+  },
+  completedNotification: {
+    backgroundColor: '#047857', // Green background for all completed
+    borderWidth: 1,
+    borderColor: '#10B981',
+  },
+  scheduleNotificationIcon: {
+    fontSize: 14,
+    marginRight: 8,
+  },
+  scheduleNotificationText: {
+    color: '#F9FAFB',
+    fontSize: 13,
+    fontWeight: '600',
+    textAlign: 'center',
+    flex: 1,
   },
 });
 
