@@ -976,7 +976,7 @@ const TimeTable: React.FC<TimeTableProps> = ({
                 isNarrowCard && styles.subjectClassroomNarrow,
               ]}
               numberOfLines={1}>
-              📍 {subject.classroom}
+              {subject.classroom}
             </Text>
           )}
           {subject.classroom && isVeryNarrow && (

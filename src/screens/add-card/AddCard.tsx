@@ -21,6 +21,7 @@ import {
   convertToStartSeconds,
   convertToUTM,
 } from '../../utils/functions';
+import {getTextColorForBackground} from '../../types/allCardConstraint';
 // import Calendar from '../components/Calendar';
 import TimePicker from '../../components/TimePicker';
 import TagColorPicker from '../../components/TagColorPicker';
@@ -44,6 +45,7 @@ interface currDayTimeProps {
   isAM_start: boolean;
   endTime: string;
   isAM_end: boolean;
+  classroom: string;
 }
 
 const AddCard: React.FC = ({navigation}: any) => {
@@ -55,6 +57,7 @@ const AddCard: React.FC = ({navigation}: any) => {
     isAM_start: true,
     endTime: '12:00',
     isAM_end: false,
+    classroom: '',
   });
   const setStartAm = (value: boolean) => {
     setCurrDayTime(prev => ({
@@ -80,6 +83,12 @@ const AddCard: React.FC = ({navigation}: any) => {
       endTime: value,
     }));
   };
+  const setClassroom = (value: string) => {
+    setCurrDayTime(prev => ({
+      ...prev,
+      classroom: value,
+    }));
+  };
   const registerName = registers[activeRegister].name;
 
   const [card, setCard] = useState<CardInterface>({
@@ -102,6 +111,7 @@ const AddCard: React.FC = ({navigation}: any) => {
     hasLimit: false,
     limit: 10,
     limitType: 'with-absent',
+    defaultClassroom: '',
   });
   const setSelectedColor = (color: string) => {
     setCard(prev => ({
@@ -234,6 +244,7 @@ const AddCard: React.FC = ({navigation}: any) => {
               currDayTime.isAM_start,
             ),
             end: convertTo24Hrs(currDayTime.endTime, currDayTime.isAM_end),
+            roomName: currDayTime.classroom || card.defaultClassroom || null,
           },
         ],
       },
@@ -241,6 +252,11 @@ const AddCard: React.FC = ({navigation}: any) => {
     if (Platform.OS === 'android') {
       ToastAndroid.show('New Slot Added', ToastAndroid.SHORT);
     }
+    // Reset classroom field after adding slot
+    setCurrDayTime(prev => ({
+      ...prev,
+      classroom: '',
+    }));
   };
 
   const handleRemoveTime = (day: string, dayTime: Slots) => {
@@ -292,6 +308,35 @@ const AddCard: React.FC = ({navigation}: any) => {
       Alert.alert('Error', 'Target Percentage should be between 0 and 100');
       return;
     }
+
+    // Create updated card with classroom info applied to all slots
+    const createUpdatedCardWithClassroom = (baseCard: CardInterface) => {
+      if (!currDayTime.classroom.trim()) return baseCard;
+
+      const updatedDays = { ...baseCard.days };
+      let hasSlots = false;
+
+      // Check if there are any slots and update them
+      Object.keys(updatedDays).forEach(day => {
+        if (updatedDays[day as keyof Days].length > 0) {
+          hasSlots = true;
+          updatedDays[day as keyof Days] = updatedDays[day as keyof Days].map(slot => ({
+            ...slot,
+            roomName: currDayTime.classroom.trim() || slot.roomName,
+          }));
+        }
+      });
+
+      // If no slots exist, store as defaultClassroom
+      return {
+        ...baseCard,
+        days: updatedDays,
+        defaultClassroom: currDayTime.classroom.trim()
+      };
+    };
+
+    const finalCard = createUpdatedCardWithClassroom(card);
+
     let newMarkings: Markings[] = [];
     for (let i = 0; i < card.present; i++) {
       newMarkings.push({
@@ -308,7 +353,7 @@ const AddCard: React.FC = ({navigation}: any) => {
       });
     }
     const markedCard: CardInterface = {
-      ...card,
+      ...finalCard,
       markedAt: newMarkings,
     };
     addCard(activeRegister, markedCard);
@@ -404,6 +449,15 @@ const AddCard: React.FC = ({navigation}: any) => {
           }
         />
 
+        <Text style={styles.label}>Classroom</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Enter classroom (optional)"
+          placeholderTextColor="#999"
+          value={currDayTime.classroom}
+          onChangeText={setClassroom}
+        />
+
         <Text style={styles.label}>Add Slots</Text>
         <View style={styles.dayPickerComp}>
           <View style={styles.pickerView}>
@@ -447,12 +501,16 @@ const AddCard: React.FC = ({navigation}: any) => {
           {Object.keys(card.days).map(day =>
             card.days[day as keyof Days].map((dayTime: Slots, index) => (
               <View key={index} style={styles.tabViewStyle}>
-                <TouchableOpacity key={dayTime.start} style={styles.tabButton}>
+                <TouchableOpacity
+                  key={dayTime.start}
+                  style={styles.tabButton}
+                >
                   <Text style={styles.tabLabel}>
                     {daysOfWeekMap[day].substring(0, 3)},{' '}
                     {convertToUTM(dayTime.start)}
                     {' - '}
                     {convertToUTM(dayTime.end)}
+                    {dayTime.roomName && `, ${dayTime.roomName}`}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -683,12 +741,14 @@ const styles = StyleSheet.create({
     minWidth: 160,
     marginBottom: 8,
     borderRadius: 8,
-    paddingLeft: 5,
-    paddingRight: 5,
+    paddingLeft: 10,
+    paddingRight: 10,
     backgroundColor: '#1F1F22',
+    height: 56, // Increased height for better visibility
   },
   picker: {
     color: '#fff',
+    height: 56, // Match container height
   },
   container3: {
     flex: 1,
