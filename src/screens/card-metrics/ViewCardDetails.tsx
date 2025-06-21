@@ -110,17 +110,17 @@ const ViewCardDetails: React.FC = ({navigation, route}: any) => {
     setCurrentMonth(new Date());
   };
   
-  const handleQRScan = () => {
+  const handleGenerateQR = () => {
     Alert.alert(
-      'QR Scanner',
-      'QR code scanning functionality will be implemented soon!',
+      'QR Generator',
+      'QR code generation functionality will be implemented soon!',
       [{ text: 'OK' }]
     );
-    // TODO: Implement QR scanner functionality
+    // TODO: Implement QR generator functionality
     // This could be used for:
-    // - Scanning attendance QR codes
-    // - Adding subjects via QR codes
-    // - Importing schedules from QR codes
+    // - Generating attendance QR codes for the current subject
+    // - Creating QR codes with subject schedule information
+    // - Sharing subject details via QR codes
   };
   
   const handleNavigateBack = () => {
@@ -173,7 +173,7 @@ const ViewCardDetails: React.FC = ({navigation, route}: any) => {
             : card.title}
         </Text>
         <TouchableOpacity
-          onPress={handleQRScan}
+          onPress={handleGenerateQR}
           style={styles.qrContainer}
           activeOpacity={0.7}>
           <QRIcon width={28} height={28} color="#6366F1" />

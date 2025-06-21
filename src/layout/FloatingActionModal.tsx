@@ -8,7 +8,6 @@ import {
   Animated,
   Dimensions,
   TouchableWithoutFeedback,
-  Image,
 } from 'react-native';
 import QRIcon from '../assets/icons/QRIcon';
 
@@ -19,7 +18,7 @@ interface FloatingActionModalProps {
   onAddTask: () => void;
   onGenerateAI: () => void;
   onImportSubjects: () => void;
-  onScanQR: () => void;
+  onGenerateQR: () => void;
 }
 
 const {width, height} = Dimensions.get('window');
@@ -31,7 +30,7 @@ const FloatingActionModal: React.FC<FloatingActionModalProps> = ({
   onAddTask,
   onGenerateAI,
   onImportSubjects,
-  onScanQR,
+  onGenerateQR,
 }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.3)).current;
@@ -102,11 +101,11 @@ const FloatingActionModal: React.FC<FloatingActionModalProps> = ({
     },
     {
       id: 5,
-      title: 'Scan QR Code',
+      title: 'Generate QR Code',
       icon: 'qr',
       iconType: 'component',
       color: '#EF4444',
-      onPress: onScanQR,
+      onPress: onGenerateQR,
     },
   ];
 

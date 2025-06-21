@@ -129,15 +129,15 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({state, navigation}) => {
     console.log('Import Subjects pressed');
   };
 
-  const handleScanQR = () => {
-    // Navigate to QR scanner screen when implemented
+  const handleGenerateQR = () => {
+    // Navigate to QR generator screen when implemented
     Alert.alert(
-      'QR Scanner',
-      'QR Code scanner feature will be implemented soon!',
+      'QR Generator',
+      'QR code generation feature will be implemented soon!',
       [{ text: 'OK' }]
     );
-    // You can add navigation to a QR scanner screen here
-    // navigation.navigate('QRScanner');
+    // You can add navigation to a QR generator screen here
+    // navigation.navigate('QRGenerator');
   };
 
   return (
@@ -285,7 +285,7 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({state, navigation}) => {
         onAddTask={handleAddTask}
         onGenerateAI={handleGenerateAI}
         onImportSubjects={handleImportSubjects}
-        onScanQR={handleScanQR}
+        onGenerateQR={handleGenerateQR}
       />
     </>
   );
