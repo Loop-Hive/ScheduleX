@@ -181,6 +181,14 @@ const TimeTableScreen: React.FC<TimeTableScreenProps> = ({
           </View>
           <Text style={styles.dateSubtitle}>{getCurrentDate()}</Text>
         </View>
+        <TouchableOpacity
+          style={styles.editButton}
+          onPress={() => navigation.navigate('EditSchedule')}>
+          <Image
+            source={require('../../assets/icons/card-menu/edit.png')}
+            style={styles.editIcon}
+          />
+        </TouchableOpacity>
         <View style={styles.dropdownContainer}>
           <TouchableOpacity
             style={styles.dropdownButton}
@@ -312,6 +320,20 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 20,
     fontWeight: 'bold',
+  },
+  editButton: {
+    padding: 8,
+    borderRadius: 6,
+    backgroundColor: '#2D2D2D',
+    justifyContent: 'center',
+    alignItems: 'center',
+    alignSelf: 'center',
+    marginRight: 16,
+  },
+  editIcon: {
+    width: 20,
+    height: 20,
+    tintColor: '#8B5CF6',
   },
   dateSubtitle: {
     color: '#8B8B8B',
