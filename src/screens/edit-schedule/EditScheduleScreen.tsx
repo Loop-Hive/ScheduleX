@@ -121,8 +121,8 @@ const SubjectCard: React.FC<SubjectCardProps> = ({card, selectedDay, dayKey, reg
 };
 
 const EditScheduleScreen: React.FC<EditScheduleScreenProps> = ({navigation}) => {
-  const [selectedDay, setSelectedDay] = useState(new Date().getDay()); // Initialize with today
-  const [selectedTabKey, setSelectedTabKey] = useState('today'); // Track which specific tab is selected
+  const [selectedDay, setSelectedDay] = useState(1); // Initialize with Monday (index 1)
+  const [selectedTabKey, setSelectedTabKey] = useState('week-1'); // Track which specific tab is selected
   const {registers, activeRegister, editCard, updateDate, selectedRegisters, setSelectedRegisters} = useStore();
 
   // Register dropdown state
@@ -479,33 +479,12 @@ const EditScheduleScreen: React.FC<EditScheduleScreenProps> = ({navigation}) => 
     {name: 'Saturday', fullName: 'Saturday', index: 6},
   ];
 
-  // Get ordered days with Today and Tomorrow first, then complete week Monday-Sunday
+  // Get ordered days with Monday through Sunday only
   const getOrderedDays = () => {
     const allDays = getAllDays();
-    const today = new Date().getDay(); // 0 = Sunday, 1 = Monday, etc.
-    const tomorrow = (today + 1) % 7;
-
     const orderedDays = [];
 
-    // Add Today tab
-    orderedDays.push({
-      name: 'Today',
-      fullName: allDays[today].fullName,
-      index: today,
-      isSpecial: true,
-      tabKey: 'today',
-    });
-
-    // Add Tomorrow tab
-    orderedDays.push({
-      name: 'Tomorrow',
-      fullName: allDays[tomorrow].fullName,
-      index: tomorrow,
-      isSpecial: true,
-      tabKey: 'tomorrow',
-    });
-
-    // Add complete week Monday through Sunday (independent of today/tomorrow)
+    // Add complete week Monday through Sunday
     // Start with Monday (index 1) and go through Sunday (index 0)
     const weekOrder = [1, 2, 3, 4, 5, 6, 0]; // Monday to Sunday
 
@@ -629,9 +608,7 @@ const EditScheduleScreen: React.FC<EditScheduleScreenProps> = ({navigation}) => 
               key={day.tabKey}
               style={[
                 styles.dayTab,
-                day.isSpecial && styles.specialDayTab,
                 selectedTabKey === day.tabKey && styles.dayTabActive,
-                selectedTabKey === day.tabKey && day.isSpecial && styles.specialDayTabActive,
               ]}
               onPress={() => {
                 setSelectedDay(day.index);
@@ -640,7 +617,6 @@ const EditScheduleScreen: React.FC<EditScheduleScreenProps> = ({navigation}) => 
               <Text
                 style={[
                   styles.dayTabText,
-                  day.isSpecial && styles.specialDayTabText,
                   selectedTabKey === day.tabKey && styles.dayTabTextActive,
                 ]}>
                 {day.name}
@@ -964,39 +940,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  specialDayTab: {
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 24,
-    borderWidth: 3,
-    borderColor: '#6366f1',
-    backgroundColor: 'transparent',
-    minWidth: 100,
-    marginHorizontal: 4, // Use consistent margin like regular tabs
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   dayTabActive: {
     backgroundColor: '#8B5CF6',
     borderColor: '#8B5CF6',
     transform: [{scale: 1.05}],
-  },
-  specialDayTabActive: {
-    backgroundColor: '#6366f1',
-    borderColor: '#6366f1',
-    borderWidth: 3,
-    transform: [{scale: 1.02}],
   },
   dayTabText: {
     fontSize: 14,
     fontWeight: '600',
     color: '#94A3B8',
     textAlign: 'center',
-  },
-  specialDayTabText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#6366f1',
   },
   dayTabTextActive: {
     color: '#FFFFFF',
