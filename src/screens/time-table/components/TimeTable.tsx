@@ -777,7 +777,7 @@ const TimeTable: React.FC<TimeTableProps> = ({
 
   // Handle disabled attendance button clicks
   const handleDisabledAttendance = () => {
-    const message = "Attendance cannot be marked for future classes.";
+    const message = "Cannot mark future Events";
 
     setToastMessage(message);
     setToastType('absent'); // Use red color for warning
