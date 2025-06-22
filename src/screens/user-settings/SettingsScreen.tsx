@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   View,
   Text,
@@ -8,14 +8,70 @@ import {
   Switch,
   ScrollView,
   Alert,
+  TextInput,
+  Modal,
+  Keyboard,
+  ToastAndroid,
 } from 'react-native';
 import useStore from '../../store/store';
 
+// Import version from package.json
+const packageJson = require('../../../package.json');
+
 const SettingsScreen: React.FC = () => {
-  const {defaultTargetPercentage, registers, activeRegister} = useStore();
+  const {defaultTargetPercentage, registers, activeRegister, setDefaultTargetPercentage, updateAllRegistersTargetPercentage} = useStore();
   const [darkMode, setDarkMode] = useState(true);
   const [notifications, setNotifications] = useState(true);
   const [autoBackup, setAutoBackup] = useState(false);
+  const [appVersion, setAppVersion] = useState(packageJson.version);
+  const [showTargetModal, setShowTargetModal] = useState(false);
+  const [newTargetValue, setNewTargetValue] = useState(defaultTargetPercentage.toString());
+
+  useEffect(() => {
+    // Set app version from package.json
+    setAppVersion(packageJson.version);
+    // Update local state when store value changes
+    setNewTargetValue(defaultTargetPercentage.toString());
+  }, [defaultTargetPercentage]);
+
+  const handleTargetPercentagePress = () => {
+    setNewTargetValue(defaultTargetPercentage.toString());
+    setShowTargetModal(true);
+  };
+
+  const handleTargetValueChange = (text: string) => {
+    setNewTargetValue(text);
+    // Close keyboard after 2 digits are entered
+    if (text.length === 2) {
+      Keyboard.dismiss();
+    }
+  };
+
+  const handleSaveTargetPercentage = () => {
+    const percentage = parseInt(newTargetValue);
+    if (isNaN(percentage) || percentage < 1 || percentage > 100) {
+      Alert.alert('Invalid Input', 'Please enter a valid percentage between 1 and 100.');
+      return;
+    }
+
+    // Update the global default target percentage
+    setDefaultTargetPercentage(percentage);
+
+    // Update all cards in ALL registers
+    updateAllRegistersTargetPercentage(percentage);
+
+    setShowTargetModal(false);
+
+    ToastAndroid.show(
+      `Default target percentage set to ${percentage}%`,
+      ToastAndroid.SHORT,
+    );
+  };
+
+  const handleCancelTargetChange = () => {
+    setNewTargetValue(defaultTargetPercentage.toString());
+    setShowTargetModal(false);
+  };
 
   const clearAllData = () => {
     Alert.alert(
@@ -81,6 +137,19 @@ const SettingsScreen: React.FC = () => {
         {/* Settings Options */}
         <View style={styles.settingsSection}>
           <Text style={styles.sectionTitle}>Preferences</Text>
+
+          <TouchableOpacity style={styles.settingItem} onPress={handleTargetPercentagePress}>
+            <View style={styles.settingInfo}>
+              <Text style={styles.settingLabel}>Default Target Percentage</Text>
+              <Text style={styles.settingDescription}>
+                Set for ALL subjects in ALL registers
+              </Text>
+            </View>
+            <View style={styles.targetValueContainer}>
+              <Text style={styles.settingValue}>{defaultTargetPercentage}%</Text>
+              <Text style={styles.editHint}>Tap</Text>
+            </View>
+          </TouchableOpacity>
 
           <View style={styles.settingItem}>
             <View style={styles.settingInfo}>
@@ -156,14 +225,54 @@ const SettingsScreen: React.FC = () => {
           <Text style={styles.sectionTitle}>About</Text>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Version</Text>
-            <Text style={styles.infoValue}>1.0.0</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Default Target</Text>
-            <Text style={styles.infoValue}>{defaultTargetPercentage}%</Text>
+            <Text style={styles.infoValue}>{appVersion}</Text>
           </View>
         </View>
       </View>
+
+      {/* Target Percentage Modal */}
+      <Modal
+        visible={showTargetModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={handleCancelTargetChange}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Set Default Target Percentage</Text>
+            <Text style={styles.modalSubtitle}>
+              This will update the target percentage for ALL subjects in ALL registers
+            </Text>
+
+            <View style={styles.inputContainer}>
+              <TextInput
+                style={styles.input}
+                value={newTargetValue}
+                onChangeText={handleTargetValueChange}
+                keyboardType="numeric"
+                placeholder="Enter percentage"
+                placeholderTextColor="#71717A"
+                maxLength={3}
+                selectTextOnFocus={true}
+              />
+              <Text style={styles.percentSymbol}>%</Text>
+            </View>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={handleCancelTargetChange}>
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.modalButton, styles.saveButton]}
+                onPress={handleSaveTargetPercentage}>
+                <Text style={styles.saveButtonText}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 };
@@ -175,6 +284,7 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     padding: 20,
+    paddingBottom: 70, // Add extra bottom padding to avoid navigation panel overlap
   },
   headerContainer: {
     flexDirection: 'row',
@@ -279,7 +389,7 @@ const styles = StyleSheet.create({
     color: '#A1A1AA',
   },
   infoSection: {
-    marginBottom: 30,
+    marginBottom: 50, // Increased from 30 to provide more space above navigation
   },
   infoRow: {
     flexDirection: 'row',
@@ -295,6 +405,100 @@ const styles = StyleSheet.create({
   infoLabel: {
     fontSize: 16,
     color: '#A1A1AA',
+  },
+  targetValueContainer: {
+    alignItems: 'center',
+  },
+  settingValue: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#f5f5f5',
+    marginBottom: 2,
+  },
+  editHint: {
+    fontSize: 12,
+    color: '#71717A',
+    marginTop: 2,
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    backgroundColor: '#27272A',
+    borderRadius: 16,
+    padding: 24,
+    width: '85%',
+    maxWidth: 400,
+    borderWidth: 1,
+    borderColor: '#3F3F46',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#f5f5f5',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: '#A1A1AA',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 20,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#18181B',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#3F3F46',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 24,
+  },
+  input: {
+    flex: 1,
+    fontSize: 18,
+    color: '#f5f5f5',
+    textAlign: 'center',
+  },
+  percentSymbol: {
+    fontSize: 18,
+    color: '#A1A1AA',
+    marginLeft: 8,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  cancelButton: {
+    backgroundColor: '#3F3F46',
+  },
+  saveButton: {
+    backgroundColor: '#4CAF50',
+  },
+  cancelButtonText: {
+    color: '#f5f5f5',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 
