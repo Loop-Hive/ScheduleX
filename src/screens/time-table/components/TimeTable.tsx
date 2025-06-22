@@ -41,6 +41,7 @@ interface Subject {
   dayOfWeek: number; // 0 = Sunday, 1 = Monday, etc.
   cardId?: number; // Added for attendance tracking
   registerId?: number; // Added for attendance tracking
+  timeSlot?: string; // Added for per-slot attendance tracking
 }
 
 interface TimeTableProps {
@@ -673,9 +674,28 @@ const TimeTable: React.FC<TimeTableProps> = ({
     const startPosition = (startHour + startMinutes / 60) * hourHeight;
     const endPosition = (endHour + endMinutes / 60) * hourHeight;
 
-    // Add small vertical spacing to prevent overlapping of adjacent subjects
+    // Calculate duration for responsive height adjustment
+    const durationMinutes = (endHour * 60 + endMinutes) - (startHour * 60 + startMinutes);    // Add small vertical spacing to prevent overlapping of adjacent subjects
     const verticalSpacing = 1; // Small gap between vertically adjacent subjects
-    const adjustedHeight = Math.max(endPosition - startPosition - verticalSpacing, 20); // Minimum height of 20
+
+    // Google Calendar-inspired dynamic minimum height
+    // Ensures text is always readable regardless of zoom level
+    let minHeight: number;
+    if (durationMinutes <= 5) {
+      // Very small intervals: ensure minimum height for text visibility
+      minHeight = Math.max(20, hourHeight * 0.15); // Increased to ensure text is always visible
+    } else if (durationMinutes <= 15) {
+      // Small intervals: ensure adequate space for text and indicators
+      minHeight = Math.max(28, hourHeight * 0.2); // Increased for better text visibility
+    } else if (durationMinutes <= 30) {
+      // Medium intervals: standard minimum
+      minHeight = Math.max(30, hourHeight * 0.25); // Can fit 2 lines comfortably
+    } else {
+      // Regular intervals: allow natural sizing but with reasonable minimum
+      minHeight = 32;
+    }
+
+    const adjustedHeight = Math.max(endPosition - startPosition - verticalSpacing, minHeight);
 
     // Google Calendar-inspired width calculation - NO STACKING, side-by-side placement
     // Key principles:
@@ -733,12 +753,18 @@ const TimeTable: React.FC<TimeTableProps> = ({
       const idParts = subject.id.split('-');
       const registerId = parseInt(idParts[0], 10);
       const cardId = parseInt(idParts[1], 10);
+      const dayKey = idParts[2]; // day part
+      const slotIndex = idParts[3]; // slot part
 
-      // Add the parsed IDs to the subject for attendance tracking
+      // Create time slot identifier from the subject's start and end time
+      const timeSlot = `${dayKey}-${slotIndex}-${subject.startTime}-${subject.endTime}`;
+
+      // Add the parsed IDs and time slot to the subject for attendance tracking
       const subjectWithIds = {
         ...subject,
         registerId,
-        cardId
+        cardId,
+        timeSlot
       };
 
       setSelectedSubjectForAttendance(subjectWithIds);
@@ -749,7 +775,7 @@ const TimeTable: React.FC<TimeTableProps> = ({
   // Handle attendance actions
   const handleMarkPresent = () => {
     if (selectedSubjectForAttendance?.registerId !== undefined && selectedSubjectForAttendance?.cardId !== undefined) {
-      markPresent(selectedSubjectForAttendance.registerId, selectedSubjectForAttendance.cardId);
+      markPresent(selectedSubjectForAttendance.registerId, selectedSubjectForAttendance.cardId, selectedSubjectForAttendance.timeSlot);
       setShowAttendanceModal(false);
       setSelectedSubjectForAttendance(null);
       // Force re-render to show attendance indicator
@@ -759,7 +785,7 @@ const TimeTable: React.FC<TimeTableProps> = ({
 
   const handleMarkAbsent = () => {
     if (selectedSubjectForAttendance?.registerId !== undefined && selectedSubjectForAttendance?.cardId !== undefined) {
-      markAbsent(selectedSubjectForAttendance.registerId, selectedSubjectForAttendance.cardId);
+      markAbsent(selectedSubjectForAttendance.registerId, selectedSubjectForAttendance.cardId, selectedSubjectForAttendance.timeSlot);
       setShowAttendanceModal(false);
       setSelectedSubjectForAttendance(null);
       // Force re-render to show attendance indicator
@@ -777,6 +803,7 @@ const TimeTable: React.FC<TimeTableProps> = ({
     if (selectedSubjectForAttendance?.registerId !== undefined && selectedSubjectForAttendance?.cardId !== undefined) {
       const registerId = selectedSubjectForAttendance.registerId;
       const cardId = selectedSubjectForAttendance.cardId;
+      const timeSlot = selectedSubjectForAttendance.timeSlot;
 
       // Get today's date
       const today = new Date();
@@ -787,21 +814,34 @@ const TimeTable: React.FC<TimeTableProps> = ({
       if (register?.cards) {
         const card = register.cards.find(c => c.id === cardId);
         if (card) {
-          // Find all today's markings
-          const todayMarkings = card.markedAt.filter(marking => {
+          // Find all today's markings first
+          const allTodayMarkings = card.markedAt.filter(marking => {
             const markingDate = new Date(marking.date);
             return markingDate.toDateString() === todayDateString;
           });
 
-          console.log(`Found ${todayMarkings.length} markings to clear for ${selectedSubjectForAttendance.name}`);
+          // Check if there are any markings with timeSlot for this card today
+          const hasTimeSlotMarkings = allTodayMarkings.some(marking => marking.timeSlot);
+
+          let todayMarkings;
+
+          if (hasTimeSlotMarkings) {
+            // If there are time slot markings, filter by specific time slot
+            todayMarkings = allTodayMarkings.filter(marking => marking.timeSlot === timeSlot);
+          } else {
+            // If no time slot markings exist, clear all today's markings (backward compatibility)
+            todayMarkings = allTodayMarkings;
+          }
+
+          console.log(`Found ${todayMarkings.length} markings to clear for ${selectedSubjectForAttendance.name} at time slot ${timeSlot}`);
 
           if (todayMarkings.length > 0) {
-            // Remove all today's markings in reverse order to avoid ID shifting issues
+            // Remove all today's markings for this time slot in reverse order to avoid ID shifting issues
             // Sort by ID in descending order to remove highest IDs first
             const markingsToRemove = [...todayMarkings].sort((a, b) => b.id - a.id);
 
             markingsToRemove.forEach((marking, index) => {
-              console.log(`Removing marking ${index + 1}/${markingsToRemove.length}: ID ${marking.id}, isPresent: ${marking.isPresent}`);
+              console.log(`Removing marking ${index + 1}/${markingsToRemove.length}: ID ${marking.id}, isPresent: ${marking.isPresent}, timeSlot: ${marking.timeSlot}`);
               try {
                 removeMarking(registerId, cardId, marking.id);
               } catch (error) {
@@ -811,12 +851,12 @@ const TimeTable: React.FC<TimeTableProps> = ({
 
             setShowClearConfirmation(false);
             setShowAttendanceModal(false);
-            showToastNotification(`All attendance cleared for ${selectedSubjectForAttendance.name} today`, 'absent');
+            showToastNotification('Attendance cleared', 'absent');
             setSelectedSubjectForAttendance(null);
             // Force re-render to hide attendance indicators
             setAttendanceUpdateTrigger(prev => prev + 1);
           } else {
-            console.log('No markings found to clear');
+            console.log('No markings found to clear for this time slot');
             setShowClearConfirmation(false);
           }
         }
@@ -900,10 +940,15 @@ const TimeTable: React.FC<TimeTableProps> = ({
     // Only show indicators for today's tab
     if (selectedTabKey !== 'today') return null;
 
-    // Parse subject ID to get registerId and cardId
+    // Parse subject ID to get registerId, cardId, and time slot info
     const idParts = subject.id.split('-');
     const registerId = parseInt(idParts[0], 10);
     const cardId = parseInt(idParts[1], 10);
+    const dayKey = idParts[2]; // day part
+    const slotIndex = idParts[3]; // slot part
+
+    // Create time slot identifier that matches what we store
+    const subjectTimeSlot = `${dayKey}-${slotIndex}-${subject.startTime}-${subject.endTime}`;
 
     // Get today's date - need to check if any marking is from today
     const today = new Date();
@@ -922,22 +967,42 @@ const TimeTable: React.FC<TimeTableProps> = ({
       return null;
     }
 
-    // Find all today's attendance markings
-    const todayMarkings = card.markedAt.filter(marking => {
+    console.log(`Checking attendance for ${subject.name} (${subjectTimeSlot})`);
+    console.log(`Total markings for card:`, card.markedAt.length);
+
+    // Find all today's markings first
+    const allTodayMarkings = card.markedAt.filter(marking => {
       const markingDate = new Date(marking.date);
       return markingDate.toDateString() === todayDateString;
     });
 
+    console.log(`Today's markings:`, allTodayMarkings.length);
+
+    // Check if there are any markings with timeSlot for this card today
+    const hasTimeSlotMarkings = allTodayMarkings.some(marking => marking.timeSlot);
+
+    let todayMarkings;
+
+    if (hasTimeSlotMarkings) {
+      // If there are time slot markings, filter by specific time slot
+      todayMarkings = allTodayMarkings.filter(marking => marking.timeSlot === subjectTimeSlot);
+      console.log(`Time slot specific markings for ${subjectTimeSlot}:`, todayMarkings.length);
+    } else {
+      // If no time slot markings exist, show all today's markings (backward compatibility)
+      todayMarkings = allTodayMarkings;
+      console.log(`Using all today's markings (no timeSlot field):`, todayMarkings.length);
+    }
+
     if (todayMarkings.length === 0) {
-      console.log(`No markings found for today (${todayDateString})`);
+      console.log(`No markings found for today (${todayDateString}) and time slot (${subjectTimeSlot})`);
       return null;
     }
 
-    // Count present and absent markings
+    // Count present and absent markings for this specific time slot
     const presentCount = todayMarkings.filter(marking => marking.isPresent).length;
     const absentCount = todayMarkings.filter(marking => !marking.isPresent).length;
 
-    console.log(`Found markings for ${subject.name}: ${presentCount} present, ${absentCount} absent`);
+    console.log(`Found markings for ${subject.name} at ${subjectTimeSlot}: ${presentCount} present, ${absentCount} absent`);
     console.log('attendanceUpdateTrigger:', attendanceUpdateTrigger); // Ensure re-render trigger
 
     return { present: presentCount, absent: absentCount };
@@ -1164,42 +1229,122 @@ const TimeTable: React.FC<TimeTableProps> = ({
     const textColor = getTextColorForBackground(subject.color);
     const isSelected = selectedSubjectId === subject.id;
 
-    // Calculate if this is a narrow card to adjust text rendering
+    // Calculate card style and dimensions
     const cardStyle = getSubjectStyle(subject, groupIndex, positionInGroup, totalInGroup);
-    const isNarrowCard = cardStyle.width < 160;
-    const isVeryNarrow = cardStyle.width < 130;
+    const cardHeight = cardStyle.height;
+    const cardWidth = cardStyle.width;
 
-    // Helper function to format subject name for better word wrapping
-    const formatSubjectName = (name: string, width: number) => {
+    // Calculate duration in minutes for responsive sizing
+    const startTime = subject.startTime.split(':');
+    const endTime = subject.endTime.split(':');
+    const startMinutes = parseInt(startTime[0]) * 60 + parseInt(startTime[1]);
+    const endMinutes = parseInt(endTime[0]) * 60 + parseInt(endTime[1]);
+    const durationMinutes = endMinutes - startMinutes;
+
+    // Responsive sizing based on card height and duration
+    const isVerySmallInterval = durationMinutes <= 5;
+    const isSmallInterval = durationMinutes <= 15;
+    const isTinyCard = cardHeight < 25;
+    const isVeryTinyCard = cardHeight < 15;
+    const isNarrowCard = cardWidth < 160;
+    const isVeryNarrow = cardWidth < 130;
+
+    // Dynamic padding based on card size - more generous for readability
+    const getDynamicPadding = () => {
+      if (isVeryTinyCard) return 1; // Minimal padding for very small cards
+      if (isTinyCard) return 2;
+      if (isSmallInterval) return 4; // More padding for 5-15 minute intervals
+      if (isNarrowCard) return 5;
+      return 6; // Standard padding
+    };
+
+    // Smart font sizing - prioritize readability and full text display
+    const getDynamicFontSizes = () => {
+      // Check if we have attendance indicators
+      const attendanceStatus = getTodayAttendanceStatus(subject);
+      const hasAttendanceIndicators = attendanceStatus && (attendanceStatus.present > 0 || attendanceStatus.absent > 0) && !isVeryTinyCard;
+
+      if (isVeryTinyCard) {
+        return {
+          nameSize: 11, // Minimum readable size
+          classroomSize: 9,
+          showClassroom: false, // Hide secondary info in very tiny cards
+          maxLines: 1,
+        };
+      }
+      if (isTinyCard) {
+        return {
+          nameSize: 12, // Larger for better readability
+          classroomSize: 10,
+          showClassroom: false, // Hide classroom to prioritize event name
+          maxLines: 1,
+        };
+      }
+      if (isSmallInterval) {
+        return {
+          nameSize: 13, // Larger font for 5-15 minute intervals
+          classroomSize: 11,
+          // Show classroom if there's space, but be slightly more conservative with indicators
+          showClassroom: cardWidth > 100 && cardHeight > 35 && (!hasAttendanceIndicators || cardHeight > 40),
+          maxLines: cardHeight > 30 ? (hasAttendanceIndicators && cardHeight < 50 ? 1 : 2) : 1,
+        };
+      }
+      if (isVeryNarrow) {
+        return {
+          nameSize: 12,
+          classroomSize: 10,
+          showClassroom: !hasAttendanceIndicators || cardHeight > 35,
+          maxLines: hasAttendanceIndicators && cardHeight < 35 ? 1 : 2,
+        };
+      }
+      if (isNarrowCard) {
+        return {
+          nameSize: 13,
+          classroomSize: 11,
+          showClassroom: true,
+          maxLines: 2,
+        };
+      }
+      return {
+        nameSize: 14,
+        classroomSize: 11,
+        showClassroom: true,
+        maxLines: 3,
+      };
+    };
+
+    const dynamicPadding = getDynamicPadding();
+    const fontSizes = getDynamicFontSizes();
+
+    // Smart text formatting - let React Native handle overflow naturally
+    const formatSubjectName = (name: string, width: number, height: number, maxLines: number) => {
       const words = name.split(' ');
 
-      if (words.length === 1) {
-        // Single word - use as is
-        return name;
-      }
-
-      // For narrow cards, try to break into lines
-      if (width < 130) {
-        // Very narrow: show first word only with ellipsis if multiple words
-        return words.length > 1 ? `${words[0]}...` : words[0];
-      } else if (width < 160) {
-        // Narrow: try to fit 2-3 words per line
-        if (words.length === 2) {
-          return name; // Let React Native handle the wrapping
-        } else if (words.length >= 3) {
-          // Put first 1-2 words on first line, rest on second
-          const firstLine = words.slice(0, 2).join(' ');
-          const secondLine = words.slice(2).join(' ');
-          return `${firstLine}\n${secondLine}`;
+      // Only truncate for extremely tiny cards where even 1 line won't fit properly
+      if (isVeryTinyCard) {
+        if (words.length > 1) {
+          // Create abbreviation: "Computer Science" -> "CS"
+          const abbreviation = words
+            .filter(word => word.length > 0)
+            .map(word => word.charAt(0).toUpperCase())
+            .join('');
+          if (abbreviation.length <= 3) {
+            return abbreviation;
+          }
+          // If abbreviation is too long, use first word
+          return words[0].substring(0, 5);
         }
+        // Single word: truncate smartly
+        return name.length > 6 ? name.substring(0, 5) : name;
       }
 
-      // For wider cards, allow natural word wrapping
+      // For all other cases, return the full name and let React Native handle truncation
+      // This ensures we show as much as possible within the available space
       return name;
     };
 
-    const formattedName = formatSubjectName(subject.name, cardStyle.width);
-    const shouldUseWordWrapping = cardStyle.width >= 130 && subject.name.includes(' ');
+    const formattedName = formatSubjectName(subject.name, cardWidth, cardHeight, fontSizes.maxLines);
+    const shouldUseWordWrapping = cardWidth >= 130 && subject.name.includes(' ') && !isTinyCard;
 
     return (
       <TouchableOpacity
@@ -1207,9 +1352,13 @@ const TimeTable: React.FC<TimeTableProps> = ({
         style={[
           styles.subjectCard,
           cardStyle,
-          {backgroundColor: subject.color},
+          {
+            backgroundColor: subject.color,
+            padding: dynamicPadding,
+            // Override radius for very tiny cards
+            borderRadius: isVeryTinyCard ? 4 : isTinyCard ? 6 : 8,
+          },
           isSelected && styles.subjectCardSelected,
-          isNarrowCard && styles.subjectCardNarrow,
           // Add subtle border for overlapping events to distinguish them
           totalInGroup > 1 && {
             borderWidth: 1,
@@ -1226,7 +1375,9 @@ const TimeTable: React.FC<TimeTableProps> = ({
           {(() => {
             const attendanceStatus = getTodayAttendanceStatus(subject);
             console.log(`Rendering indicators for ${subject.name}:`, attendanceStatus);
-            if (!attendanceStatus || (attendanceStatus.present === 0 && attendanceStatus.absent === 0)) return null;
+
+            // Hide attendance indicators for very tiny cards to save space
+            if (isVeryTinyCard || !attendanceStatus || (attendanceStatus.present === 0 && attendanceStatus.absent === 0)) return null;
 
             const indicators = [];
 
@@ -1236,13 +1387,35 @@ const TimeTable: React.FC<TimeTableProps> = ({
                 <View
                   key="present"
                   style={[
-                    styles.attendanceIndicator,
                     styles.attendancePresent,
-                    indicators.length > 0 && { top: 6 + (indicators.length * 16) } // Stack vertically if multiple
+                    {
+                      // Even smaller indicators that fit better
+                      width: isTinyCard ? 6 : 8,
+                      height: isTinyCard ? 6 : 8,
+                      borderRadius: isTinyCard ? 3 : 4,
+                      borderWidth: 1,
+                      borderColor: 'rgba(255, 255, 255, 0.8)',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      marginRight: 2, // Small gap between indicators
+                      // Allow indicators to be clickable
+                      pointerEvents: 'auto',
+                    },
                   ]}
                 >
-                  {attendanceStatus.present > 1 && (
-                    <Text style={styles.attendanceCount}>{attendanceStatus.present}</Text>
+                  {attendanceStatus.present > 1 && !isTinyCard && (
+                    <Text style={[
+                      styles.attendanceCount,
+                      {
+                        fontSize: 6,
+                        lineHeight: 6,
+                        textAlign: 'center',
+                        textAlignVertical: 'center',
+                        includeFontPadding: false,
+                      }
+                    ]}>
+                      {attendanceStatus.present}
+                    </Text>
                   )}
                 </View>
               );
@@ -1254,54 +1427,134 @@ const TimeTable: React.FC<TimeTableProps> = ({
                 <View
                   key="absent"
                   style={[
-                    styles.attendanceIndicator,
                     styles.attendanceAbsent,
-                    indicators.length > 0 && { top: 6 + (indicators.length * 16) } // Stack vertically if multiple
+                    {
+                      // Even smaller indicators that fit better
+                      width: isTinyCard ? 6 : 8,
+                      height: isTinyCard ? 6 : 8,
+                      borderRadius: isTinyCard ? 3 : 4,
+                      borderWidth: 1,
+                      borderColor: 'rgba(255, 255, 255, 0.8)',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      // Allow indicators to be clickable
+                      pointerEvents: 'auto',
+                    },
                   ]}
                 >
-                  {attendanceStatus.absent > 1 && (
-                    <Text style={styles.attendanceCount}>{attendanceStatus.absent}</Text>
+                  {attendanceStatus.absent > 1 && !isTinyCard && (
+                    <Text style={[
+                      styles.attendanceCount,
+                      {
+                        fontSize: 6,
+                        lineHeight: 6,
+                        textAlign: 'center',
+                        textAlignVertical: 'center',
+                        includeFontPadding: false,
+                      }
+                    ]}>
+                      {attendanceStatus.absent}
+                    </Text>
                   )}
                 </View>
               );
             }
 
-            return indicators;
+            return (
+              <View style={styles.attendanceIndicatorContainer}>
+                {indicators}
+              </View>
+            );
           })()}
 
-          <Text
-            style={[
-              styles.subjectName,
-              {color: textColor},
-              isNarrowCard && styles.subjectNameNarrow,
-              isVeryNarrow && styles.subjectNameVeryNarrow,
-            ]}
-            numberOfLines={isVeryNarrow ? 1 : shouldUseWordWrapping ? 3 : 2}
-            adjustsFontSizeToFit={isVeryNarrow && !shouldUseWordWrapping}
-            minimumFontScale={isVeryNarrow ? 0.8 : 1.0}>
-            {formattedName}
-          </Text>
-          {subject.classroom && !isVeryNarrow && (
-            <Text
-              style={[
-                styles.subjectClassroom,
-                {color: textColor},
-                isNarrowCard && styles.subjectClassroomNarrow,
-              ]}
-              numberOfLines={1}>
-              {subject.classroom}
-            </Text>
-          )}
-          {subject.classroom && isVeryNarrow && (
-            <Text
-              style={[
-                styles.subjectClassroomVeryNarrow,
-                {color: textColor},
-              ]}
-              numberOfLines={1}>
-              {subject.classroom}
-            </Text>
-          )}
+          {/* Check if we have attendance indicators to adjust text layout */}
+          {(() => {
+            const attendanceStatus = getTodayAttendanceStatus(subject);
+            const hasAttendanceIndicators = attendanceStatus && (attendanceStatus.present > 0 || attendanceStatus.absent > 0) && !isVeryTinyCard;
+
+            // Calculate how much space attendance indicators take up (updated for smaller indicators)
+            const indicatorWidth = hasAttendanceIndicators ? (
+              (attendanceStatus.present > 0 ? (isTinyCard ? 6 : 8) : 0) +
+              (attendanceStatus.absent > 0 ? (isTinyCard ? 6 : 8) : 0) +
+              (attendanceStatus.present > 0 && attendanceStatus.absent > 0 ? 2 : 0) + // margin between
+              4 // base padding from right edge
+            ) : 0;
+
+            return (
+              <View style={{
+                flex: 1,
+                position: 'relative',
+              }}>
+                {/* Text content area - positioned to avoid indicators */}
+                <View style={{
+                  flex: 1,
+                  // Reserve space at bottom-right for smaller indicators
+                  paddingBottom: hasAttendanceIndicators ? (isTinyCard ? 10 : 12) : 0,
+                  // For very narrow cards, also add right padding
+                  paddingRight: hasAttendanceIndicators && (isVeryTinyCard || cardWidth < 100) ?
+                    Math.min(indicatorWidth, 16) : 0,
+                  // Ensure minimum height for text visibility
+                  minHeight: fontSizes.nameSize + 4,
+                }}>
+                <Text
+                  style={[
+                    styles.subjectName,
+                    {
+                      color: textColor,
+                      fontSize: fontSizes.nameSize,
+                      // Dynamic line height based on font size
+                      lineHeight: fontSizes.nameSize + 2,
+                      marginBottom: isVeryTinyCard ? 0 : isTinyCard ? 1 : 2,
+                      fontWeight: '600',
+                      // Ensure text is always visible, even in small spaces
+                      minHeight: fontSizes.nameSize + 2, // Guarantee minimum space for text
+                    },
+                  ]}
+                  numberOfLines={fontSizes.maxLines}
+                  ellipsizeMode="tail"
+                  >
+                  {formattedName}
+                </Text>
+
+                {/* Google Calendar approach: Show classroom only when there's space and it's enabled */}
+                {subject.classroom && fontSizes.showClassroom && !hasAttendanceIndicators && (
+                  <Text
+                    style={[
+                      styles.subjectClassroom,
+                      {
+                        color: textColor,
+                        fontSize: fontSizes.classroomSize,
+                        opacity: 0.8,
+                        marginBottom: 0,
+                      },
+                    ]}
+                    numberOfLines={1}
+                    ellipsizeMode="tail">
+                    {subject.classroom}
+                  </Text>
+                )}
+
+                {/* Show classroom for cards with indicators only if there's enough space */}
+                {subject.classroom && fontSizes.showClassroom && hasAttendanceIndicators && cardHeight > 45 && (
+                  <Text
+                    style={[
+                      styles.subjectClassroom,
+                      {
+                        color: textColor,
+                        fontSize: fontSizes.classroomSize,
+                        opacity: 0.8,
+                        marginBottom: 16, // Extra margin to avoid indicators
+                      },
+                    ]}
+                    numberOfLines={1}
+                    ellipsizeMode="tail">
+                    {subject.classroom}
+                  </Text>
+                )}
+                </View>
+              </View>
+            );
+          })()}
         </View>
       </TouchableOpacity>
     );
@@ -2208,6 +2461,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.8)',
   },
+  attendanceIndicatorContainer: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    zIndex: 10,
+    // Ensure indicators don't take up layout space
+    pointerEvents: 'none',
+  },
   attendancePresent: {
     backgroundColor: '#22C55E', // Green for present
   },
@@ -2215,11 +2478,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#EF4444', // Red for absent
   },
   attendanceCount: {
-    fontSize: 8,
-    fontWeight: '600',
+    fontSize: 6,
+    fontWeight: '700',
     color: '#FFFFFF',
     textAlign: 'center',
-    lineHeight: 10,
+    textAlignVertical: 'center',
+    lineHeight: 6,
+    includeFontPadding: false,
   },
   // Confirmation dialog styles
   confirmationModalContent: {

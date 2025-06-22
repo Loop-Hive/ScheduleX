@@ -18,6 +18,7 @@ export interface Markings {
   id: number;
   date: string;
   isPresent: boolean;
+  timeSlot?: string; // Optional time slot info for multiple slots per day
 }
 
 export interface CardInterface {

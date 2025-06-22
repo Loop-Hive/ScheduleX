@@ -32,10 +32,10 @@ interface StoreState {
   removeRegister: (registerId: number) => void;
   addCard: (registerId: number, cardData: CardInterface) => void;
   clearCardsAttendance: (registerId: number) => void;
-  markPresent: (registerId: number, cardId: number) => void;
-  markAbsent: (registerId: number, id: number) => void;
-  markAbsentWithDate: (date: Date, cardId: number, registerId: number) => void;
-  markPresentWithDate: (date: Date, cardId: number, registerId: number) => void;
+  markPresent: (registerId: number, cardId: number, timeSlot?: string) => void;
+  markAbsent: (registerId: number, id: number, timeSlot?: string) => void;
+  markAbsentWithDate: (date: Date, cardId: number, registerId: number, timeSlot?: string) => void;
+  markPresentWithDate: (date: Date, cardId: number, registerId: number, timeSlot?: string) => void;
   removeMarking: (
     registerId: number,
     cardId: number,
@@ -248,7 +248,7 @@ export const useStore = create<StoreState>()(
           },
           updatedAt: new Date(),
         })),
-      markPresent: (registerId: number, cardId: number) =>
+      markPresent: (registerId: number, cardId: number, timeSlot?: string) =>
         set(state => ({
           registers: {
             ...state.registers,
@@ -266,6 +266,7 @@ export const useStore = create<StoreState>()(
                           id: card.markedAt.length + 1,
                           date: new Date().toString(),
                           isPresent: true,
+                          timeSlot: timeSlot,
                         },
                       ],
                     }
@@ -275,7 +276,7 @@ export const useStore = create<StoreState>()(
           },
         })),
 
-      markAbsent: (registerId: number, cardId: number) =>
+      markAbsent: (registerId: number, cardId: number, timeSlot?: string) =>
         set(state => ({
           registers: {
             ...state.registers,
@@ -292,6 +293,7 @@ export const useStore = create<StoreState>()(
                           id: card.markedAt.length + 1,
                           date: new Date().toString(),
                           isPresent: false,
+                          timeSlot: timeSlot,
                         },
                       ],
                     }
@@ -300,7 +302,7 @@ export const useStore = create<StoreState>()(
             },
           },
         })),
-      markAbsentWithDate: (date: Date, cardId: number, registerId: number) =>
+      markAbsentWithDate: (date: Date, cardId: number, registerId: number, timeSlot?: string) =>
         set(state => {
           const register = state.registers[registerId];
           const card = register.cards.find(
@@ -317,6 +319,7 @@ export const useStore = create<StoreState>()(
               id: card.markedAt.length + 1,
               date: date.toString(),
               isPresent: false,
+              timeSlot: timeSlot,
             },
           ];
 
@@ -340,7 +343,7 @@ export const useStore = create<StoreState>()(
             updatedAt: new Date(),
           };
         }),
-      markPresentWithDate: (date: Date, cardId: number, registerId: number) =>
+      markPresentWithDate: (date: Date, cardId: number, registerId: number, timeSlot?: string) =>
         set(state => {
           const register = state.registers[registerId];
           const card = register.cards.find(
@@ -357,6 +360,7 @@ export const useStore = create<StoreState>()(
               id: card.markedAt.length + 1,
               date: date.toString(),
               isPresent: true,
+              timeSlot: timeSlot,
             },
           ];
 
