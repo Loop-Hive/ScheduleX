@@ -24,6 +24,9 @@ interface StoreState {
   selectedRegisters: number[];
   setRegisters: (regNo: number, cardsData: CardInterface[]) => void;
   updateDate: (date: Date) => void;
+  setDefaultTargetPercentage: (percentage: number) => void;
+  updateAllCardsTargetPercentage: (registerId: number, percentage: number) => void;
+  updateAllRegistersTargetPercentage: (percentage: number) => void;
   changeCopyRegister: (registerId: number) => void;
   setActiveRegister: (registerId: number) => void;
   setSelectedRegisters: (selectedIds: number[]) => void;
@@ -147,6 +150,45 @@ export const useStore = create<StoreState>()(
         set(() => ({
           selectedRegisters: selectedIds,
         })),
+
+      setDefaultTargetPercentage: (percentage: number) =>
+        set(() => ({
+          defaultTargetPercentage: percentage,
+        })),
+
+      updateAllRegistersTargetPercentage: (percentage: number) =>
+        set(state => {
+          const updatedRegisters = { ...state.registers };
+          Object.keys(updatedRegisters).forEach(registerId => {
+            const regId = parseInt(registerId);
+            updatedRegisters[regId] = {
+              ...updatedRegisters[regId],
+              cards: updatedRegisters[regId].cards.map(card => ({
+                ...card,
+                target_percentage: percentage,
+              })),
+            };
+          });
+
+          return {
+            registers: updatedRegisters,
+          };
+        }),
+
+      updateAllCardsTargetPercentage: (registerId: number, percentage: number) =>
+        set(state => ({
+          registers: {
+            ...state.registers,
+            [registerId]: {
+              ...state.registers[registerId],
+              cards: state.registers[registerId]?.cards.map(card => ({
+                ...card,
+                target_percentage: percentage,
+              })) || [],
+            },
+          },
+        })),
+
       setRegisters: (registerId: number, cardsData: CardInterface[]) =>
         set(state => ({
           registers: {
