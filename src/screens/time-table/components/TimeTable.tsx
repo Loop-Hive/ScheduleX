@@ -13,15 +13,18 @@ import {
 import {
   GestureHandlerRootView,
   PanGestureHandler,
+  PinchGestureHandler,
   State,
 } from 'react-native-gesture-handler';
 import HapticFeedback from 'react-native-haptic-feedback';
 import {getTextColorForBackground} from '../../../types/allCardConstraint';
 import useStore from '../../../store/store';
 
-// Import arrow images
+// Import arrow and zoom images
 const upArrowImage = require('../../../assets/icons/up-arrow.png');
 const downArrowImage = require('../../../assets/icons/down-arrow.png');
+const zoomInImage = require('../../../assets/icons/zoom-in.png');
+const zoomOutImage = require('../../../assets/icons/zoom-out.png');
 
 const {width: screenWidth, height: screenHeight} = Dimensions.get('window');
 
@@ -106,6 +109,19 @@ const TimeTable: React.FC<TimeTableProps> = ({
   const [markerTime, setMarkerTime] = useState('12:00 AM');
   const [lastHapticHour, setLastHapticHour] = useState(-1);
   const lastScrollTime = useRef(0); // Add throttling for scroll updates
+
+  // State for pinch-to-zoom functionality
+  const [zoomScale, setZoomScale] = useState(1);
+  const zoomGestureRef = useRef<PinchGestureHandler>(null);
+  const baseHourHeight = 80; // Base height for each hour slot
+  const gestureScale = useRef(new Animated.Value(1)).current;
+  const lastZoomScale = useRef(1); // Track the scale before gesture starts
+
+  // Focal point zoom variables for Google Calendar-like behavior
+  const zoomFocalPoint = useRef<{y: number, scrollY: number} | null>(null);
+  const initialScrollOffset = useRef(0);
+  const isZooming = useRef(false); // Flag to prevent scroll conflicts during zoom
+  const lastUpdateTime = useRef(0); // Throttle fast zoom updates
 
   const scrollViewRef = useRef<ScrollView>(null);
   const currentTimeLineY = useRef(new Animated.Value(0)).current;
@@ -205,14 +221,15 @@ const TimeTable: React.FC<TimeTableProps> = ({
 
     const hour = currentTime.getHours();
     const minutes = currentTime.getMinutes();
-    const position = (hour + minutes / 60) * 80; // 80 is hour height
+    const hourHeight = baseHourHeight * zoomScale;
+    const position = (hour + minutes / 60) * hourHeight; // Use dynamic hour height
 
     Animated.timing(currentTimeLineY, {
       toValue: position,
       duration: 500,
       useNativeDriver: false,
     }).start();
-  }, [currentTime, currentTimeLineY]);
+  }, [currentTime, currentTimeLineY, zoomScale]);
 
   // Auto-scroll logic for day changes
   useEffect(() => {
@@ -226,9 +243,10 @@ const TimeTable: React.FC<TimeTableProps> = ({
         const currentTime = new Date();
         const hour = currentTime.getHours();
         const minutes = currentTime.getMinutes();
-        const currentTimePosition = (hour + minutes / 60) * 80;
+        const hourHeight = baseHourHeight * zoomScale;
+        const currentTimePosition = (hour + minutes / 60) * hourHeight;
         // Show exactly 1 hour before current time (consistent with other day behavior)
-        scrollPosition = Math.max(0, currentTimePosition - 80);
+        scrollPosition = Math.max(0, currentTimePosition - hourHeight);
       } else {
         // For other days: scroll to first subject of the day
         const daySubjects = subjects.filter(
@@ -248,9 +266,10 @@ const TimeTable: React.FC<TimeTableProps> = ({
 
           // Calculate scroll position to show the earliest subject
           const [hours, minutes] = earliestSubject.startTime.split(':').map(Number);
-          const subjectPosition = (hours + minutes / 60) * 80;
+          const hourHeight = baseHourHeight * zoomScale;
+          const subjectPosition = (hours + minutes / 60) * hourHeight;
           // Scroll to show 1 hour before the first subject (or to top if subject is too early)
-          scrollPosition = Math.max(0, subjectPosition - 80);
+          scrollPosition = Math.max(0, subjectPosition - hourHeight);
         }
         // If no subjects for this day, scrollPosition remains 0 (top of schedule)
       }
@@ -264,7 +283,7 @@ const TimeTable: React.FC<TimeTableProps> = ({
         setHasAutoScrolled(true);
       }, 100);
     }
-  }, [selectedDay, hasAutoScrolled, subjects]);
+  }, [selectedDay, hasAutoScrolled, subjects, zoomScale]);
 
   // Reset auto-scroll flag and arrow state when day changes
   useEffect(() => {
@@ -302,7 +321,8 @@ const TimeTable: React.FC<TimeTableProps> = ({
       const now = new Date();
       const hour = now.getHours();
       const minutes = now.getMinutes();
-      const currentTimePosition = (hour + minutes / 60) * 80;
+      const hourHeight = baseHourHeight * zoomScale;
+      const currentTimePosition = (hour + minutes / 60) * hourHeight;
 
       // Calculate visible viewport (accounting for day tabs, header, and bottom tab bar)
       const viewportTop = scrollY;
@@ -329,7 +349,7 @@ const TimeTable: React.FC<TimeTableProps> = ({
     }, hasAutoScrolled ? 0 : 200); // No delay for normal scroll, 200ms delay after auto-scroll
 
     return () => clearTimeout(timeoutId);
-  }, [scrollY, selectedDay, hasAutoScrolled, selectedTabKey]);
+  }, [scrollY, selectedDay, hasAutoScrolled, selectedTabKey, zoomScale]);
 
   // Function to scroll back to current time
   const scrollToCurrentTime = () => {
@@ -342,8 +362,9 @@ const TimeTable: React.FC<TimeTableProps> = ({
     const currentTime = new Date();
     const hour = currentTime.getHours();
     const minutes = currentTime.getMinutes();
-    const currentTimePosition = (hour + minutes / 60) * 80;
-    const scrollPosition = Math.max(0, currentTimePosition - 80);
+    const hourHeight = baseHourHeight * zoomScale;
+    const currentTimePosition = (hour + minutes / 60) * hourHeight;
+    const scrollPosition = Math.max(0, currentTimePosition - hourHeight);
 
     // Hide the button immediately to prevent multiple clicks
     setShowScrollToNow(false);
@@ -363,6 +384,11 @@ const TimeTable: React.FC<TimeTableProps> = ({
   const handleScroll = (event: any) => {
     const offsetY = event.nativeEvent.contentOffset.y;
     setScrollY(offsetY);
+
+    // Update initial scroll offset for zoom focal point calculations only if not currently zooming
+    if (!isZooming.current) {
+      initialScrollOffset.current = offsetY;
+    }
   };
 
   // Get subjects for selected day
@@ -642,9 +668,10 @@ const TimeTable: React.FC<TimeTableProps> = ({
     const endHour = parseInt(subject.endTime.split(':')[0], 10);
     const endMinutes = parseInt(subject.endTime.split(':')[1], 10);
 
-    // Calculate exact positions to align with time grid lines
-    const startPosition = (startHour + startMinutes / 60) * 80;
-    const endPosition = (endHour + endMinutes / 60) * 80;
+    // Calculate exact positions using zoom scale
+    const hourHeight = baseHourHeight * zoomScale;
+    const startPosition = (startHour + startMinutes / 60) * hourHeight;
+    const endPosition = (endHour + endMinutes / 60) * hourHeight;
 
     // Add small vertical spacing to prevent overlapping of adjacent subjects
     const verticalSpacing = 1; // Small gap between vertically adjacent subjects
@@ -928,8 +955,9 @@ const TimeTable: React.FC<TimeTableProps> = ({
 
   // Format time for display
   const formatTimeFromPosition = (yPosition: number) => {
-    // Calculate time based on Y position
-    const totalMinutes = (yPosition / 80) * 60;
+    // Calculate time based on Y position and current zoom scale
+    const hourHeight = baseHourHeight * zoomScale;
+    const totalMinutes = (yPosition / hourHeight) * 60;
 
     // No snapping - exact minute precision
     const hours = Math.floor(totalMinutes / 60);
@@ -954,7 +982,8 @@ const TimeTable: React.FC<TimeTableProps> = ({
     const relativeY = absoluteY - timeGridTop + scrollY;
 
     // Ensure the marker stays within the time grid bounds
-    const clampedY = Math.max(0, Math.min(24 * 80 - 2, relativeY));
+    const totalGridHeight = 24 * baseHourHeight * zoomScale;
+    const clampedY = Math.max(0, Math.min(totalGridHeight - 2, relativeY));
 
     // Update marker position directly without additional animations
     setMarkerY(clampedY);
@@ -1047,6 +1076,82 @@ const TimeTable: React.FC<TimeTableProps> = ({
       }).start();
     } else if (state === State.ACTIVE) {
       onPanGestureEvent(event);
+    }
+  };
+
+  // Handle pinch gesture for zoom functionality
+  const onPinchGestureEvent = (event: any) => {
+    const { scale, focalY } = event.nativeEvent;
+
+    // Reduce throttling for better gesture responsiveness
+    const now = Date.now();
+    if (now - lastUpdateTime.current < 8) { // More responsive - 120fps
+      return;
+    }
+    lastUpdateTime.current = now;
+
+    // Apply zoom immediately during gesture for smooth feedback
+    const scaleFactor = 1 + (scale - 1) * 0.9; // More sensitive for better responsiveness
+    const newScale = Math.min(Math.max(lastZoomScale.current * scaleFactor, 0.5), 3);
+
+    // Calculate focal point zoom to keep the pinch center stationary
+    if (zoomFocalPoint.current && scrollViewRef.current) {
+      const { y: focalPointY, scrollY: initialScrollY } = zoomFocalPoint.current;
+
+      // Calculate the content position that should remain stationary
+      const contentPosition = initialScrollY + focalPointY;
+
+      // Calculate scale ratio from the original scale (not current scale)
+      const scaleFromOriginal = newScale / lastZoomScale.current;
+
+      // Calculate where this content position should be after scaling
+      const newContentPosition = contentPosition * scaleFromOriginal;
+
+      // Calculate required scroll to keep focal point stationary
+      const requiredScroll = newContentPosition - focalPointY;
+
+      // Apply both updates immediately and synchronously to prevent double animation
+      setZoomScale(newScale);
+      scrollViewRef.current.scrollTo({
+        y: Math.max(0, requiredScroll),
+        animated: false
+      });
+    } else {
+      setZoomScale(newScale);
+    }
+  };
+
+  const onPinchGestureStateChange = (event: any) => {
+    const { state, scale, focalY } = event.nativeEvent;
+
+    if (state === State.BEGAN) {
+      // Set zooming flag to prevent scroll conflicts
+      isZooming.current = true;
+
+      // Reset throttling for new gesture
+      lastUpdateTime.current = 0;
+
+      // Store the current scale and focal point when gesture begins
+      lastZoomScale.current = zoomScale;
+
+      // Capture the focal point and current scroll position
+      zoomFocalPoint.current = {
+        y: focalY,
+        scrollY: initialScrollOffset.current
+      };
+    } else if (state === State.END || state === State.CANCELLED || state === State.FAILED) {
+      // Calculate final scale and update lastZoomScale for next gesture
+      const scaleFactor = 1 + (scale - 1) * 0.9;
+      const finalScale = Math.min(Math.max(lastZoomScale.current * scaleFactor, 0.5), 3);
+      lastZoomScale.current = finalScale;
+      setZoomScale(finalScale);
+
+      // Clear focal point reference and zooming flag
+      zoomFocalPoint.current = null;
+      isZooming.current = false;
+
+      // Add haptic feedback when zoom gesture ends
+      HapticFeedback.trigger('impactLight', hapticOptions);
     }
   };
 
@@ -1283,20 +1388,44 @@ const TimeTable: React.FC<TimeTableProps> = ({
         </ScrollView>
       </View>
 
-      <ScrollView
-        ref={scrollViewRef}
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContentContainer}
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
-        scrollEnabled={!isGestureActive}>
-        <View style={styles.timeGrid}>
-          {/* Transparent touchable background to ensure scrolling works everywhere */}
-          <TouchableOpacity
-            style={styles.backgroundTouchable}
-            activeOpacity={1}
-            onPress={handleTimeTableClick}
+      {/* Zoom reset button - only show when zoom is not 1x */}
+      {zoomScale !== 1 && (
+        <TouchableOpacity
+          style={styles.zoomResetButton}
+          onPress={() => {
+            setZoomScale(1);
+            lastZoomScale.current = 1;
+          }}
+          activeOpacity={0.8}>
+          <Image
+            source={zoomScale > 1 ? zoomOutImage : zoomInImage}
+            style={styles.zoomResetIcon}
           />
+        </TouchableOpacity>
+      )}
+
+      <PinchGestureHandler
+        ref={zoomGestureRef}
+        onGestureEvent={onPinchGestureEvent}
+        onHandlerStateChange={onPinchGestureStateChange}
+        simultaneousHandlers={[]}
+        enabled={true}
+        shouldCancelWhenOutside={false}
+      >
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContentContainer}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+          scrollEnabled={!isZooming.current}>
+          <View style={[styles.timeGrid, { height: 24 * baseHourHeight * zoomScale }]}>
+            {/* Transparent touchable background to ensure scrolling works everywhere */}
+            <TouchableOpacity
+              style={styles.backgroundTouchable}
+              activeOpacity={1}
+              onPress={handleTimeTableClick}
+            />
 
           {/* Time labels with gesture handler */}
           <PanGestureHandler
@@ -1311,7 +1440,7 @@ const TimeTable: React.FC<TimeTableProps> = ({
           >
             <View style={styles.timeLabelsContainer}>
               {hours.map(({hour, display}, index) => (
-                <View key={hour} style={styles.timeSlot}>
+                <View key={hour} style={[styles.timeSlot, { height: baseHourHeight * zoomScale }]}>
                   {/* Only show time label for every hour, positioned at the top border */}
                   <Text
                     style={[
@@ -1328,7 +1457,7 @@ const TimeTable: React.FC<TimeTableProps> = ({
           {/* Hour dividers */}
           <View style={styles.hourDividers}>
             {hours.map(({hour}) => (
-              <View key={hour} style={styles.hourDivider} />
+              <View key={hour} style={[styles.hourDivider, { height: baseHourHeight * zoomScale }]} />
             ))}
           </View>
 
@@ -1383,7 +1512,8 @@ const TimeTable: React.FC<TimeTableProps> = ({
             </Animated.View>
           )}
         </View>
-      </ScrollView>
+        </ScrollView>
+      </PinchGestureHandler>
 
       {/* Simple Schedule Status Notification */}
       {notificationData && notificationData.visible && (
@@ -1583,7 +1713,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   timeGrid: {
-    height: 24 * 80, // 24 hours * 80px per hour
+    // Height is now set dynamically based on zoom scale
     position: 'relative',
   },
   backgroundTouchable: {
@@ -1605,7 +1735,7 @@ const styles = StyleSheet.create({
     borderRightColor: '#334155',
   },
   timeSlot: {
-    height: 80,
+    // Height is now set dynamically based on zoom scale
     justifyContent: 'flex-start',
     alignItems: 'center',
     paddingTop: 0,
@@ -1627,7 +1757,7 @@ const styles = StyleSheet.create({
     // borderTopColor: '#334155',
   },
   hourDivider: {
-    height: 80,
+    // Height is now set dynamically based on zoom scale
     borderTopWidth: 1,
     borderTopColor: '#334155',
   },
@@ -2208,6 +2338,35 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
     flex: 1,
+  },
+  // Zoom reset button styles (styled like scrollToNowButton)
+  zoomResetButton: {
+    position: 'absolute',
+    top: 80, // Position at center top
+    left: '50%',
+    marginLeft: -21, // Half of width (42/2) to center it
+    backgroundColor: '#6366f1',
+    borderRadius: 25,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+    zIndex: 1000,
+    minWidth: 42,
+    minHeight: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  zoomResetIcon: {
+    width: 15,
+    height: 15,
+    tintColor: '#F0F0F0', // Make the icon off-white for visibility
   },
 });
 
