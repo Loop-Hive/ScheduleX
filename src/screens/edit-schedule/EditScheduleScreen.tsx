@@ -317,7 +317,48 @@ const EditScheduleScreen: React.FC<EditScheduleScreenProps> = ({navigation}) => 
     });
 
     if (hasConflict) {
-      Alert.alert('Time Conflict', 'This time slot overlaps with an existing slot.');
+      Alert.alert(
+        'Time Conflict',
+        'This time slot overlaps with an existing slot. Do you want to add it anyway?',
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+          {
+            text: 'Add Anyway',
+            style: 'destructive',
+            onPress: () => {
+              // Continue with adding the slot
+              const newSlot: Slots = {
+                start: startTime24,
+                end: endTime24,
+                roomName: newSlotRoom.trim() || null,
+              };
+
+              // Create updated card with new slot
+              const updatedCard: CardInterface = {
+                ...selectedCardForSlot,
+                days: {
+                  ...selectedCardForSlot.days,
+                  [dayKey]: [...existingSlots, newSlot],
+                },
+              };
+
+              // Update the card in the store
+              const registerIndex = (selectedCardForSlot as CardWithRegisterInfo)._registerIndex ?? activeRegister;
+              editCard(registerIndex, updatedCard, selectedCardForSlot.id);
+
+              // Trigger update to refresh subjects page
+              updateDate(new Date());
+
+              // Close modal
+              setShowAddSlotModal(false);
+              setSelectedCardForSlot(null);
+            }
+          }
+        ]
+      );
       return;
     }
 
@@ -371,7 +412,52 @@ const EditScheduleScreen: React.FC<EditScheduleScreenProps> = ({navigation}) => 
     });
 
     if (hasConflict) {
-      Alert.alert('Time Conflict', 'This time slot overlaps with an existing slot.');
+      Alert.alert(
+        'Time Conflict',
+        'This time slot overlaps with an existing slot. Do you want to update it anyway?',
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+          {
+            text: 'Update Anyway',
+            style: 'destructive',
+            onPress: () => {
+              // Continue with updating the slot
+              const updatedSlot: Slots = {
+                start: startTime24,
+                end: endTime24,
+                roomName: newSlotRoom.trim() || null,
+              };
+
+              // Create updated slots array with the edited slot
+              const updatedSlots = [...existingSlots];
+              updatedSlots[selectedSlotIndex] = updatedSlot;
+
+              const updatedCard: CardInterface = {
+                ...selectedCardForSlot,
+                days: {
+                  ...selectedCardForSlot.days,
+                  [dayKey]: updatedSlots,
+                },
+              };
+
+              // Update the card in the store
+              const registerIndex = (selectedCardForSlot as CardWithRegisterInfo)._registerIndex ?? activeRegister;
+              editCard(registerIndex, updatedCard, selectedCardForSlot.id);
+
+              // Trigger update to refresh subjects page
+              updateDate(new Date());
+
+              // Close modal
+              setShowEditSlotModal(false);
+              setSelectedCardForSlot(null);
+              setSelectedSlotIndex(-1);
+            }
+          }
+        ]
+      );
       return;
     }
 
