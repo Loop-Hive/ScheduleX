@@ -2,7 +2,7 @@ import React from 'react';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import AddCard from '../../screens/add-card/AddCard';
 import EditCard from '../../screens/edit-card/EditCard';
-import EditScheduleScreen from '../../screens/edit-schedule/EditScheduleScreen';
+import ManageScheduleScreen from '../../screens/edit-schedule/EditScheduleScreen';
 import ViewCardDetails from '../../screens/card-metrics/ViewCardDetails';
 import AiScreen from '../../screens/generate-ai/AiScreen';
 import {NavigationContainer} from '@react-navigation/native';
@@ -47,7 +47,7 @@ const AppNavigator: React.FC = () => {
         />
         <Stack.Screen
           name="EditSchedule"
-          component={EditScheduleScreen}
+          component={ManageScheduleScreen}
           options={{animation: 'slide_from_right'}}
         />
         <Stack.Screen
