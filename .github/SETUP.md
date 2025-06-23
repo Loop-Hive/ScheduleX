@@ -36,7 +36,7 @@ code Attendance-AI
 ### Step 4: Install Dependencies
 
 ```sh
-cd Attendance-AI && yarn install && cd android && touch keystore.properties && cp keystore-template.properties keystore.properties
+yarn install && cd android && touch keystore.properties && cp keystore-template.properties keystore.properties
 ```
 
 ### Step 5: Run the App
