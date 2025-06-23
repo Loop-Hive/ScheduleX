@@ -1,37 +1,39 @@
 # Attendance & Time Table App
 
-A **React Native** application to track and manage attendance efficiently. The app allows users to mark attendance, view attendance records, and analyze trends. Built with **React Native**, it ensures a smooth and responsive experience across both Android and iOS platforms.
+A cross platform **React Native** application  designed to help you track attendance and manage shcedules with ease.
 
-- Designed on Figma ([link](https://www.figma.com/design/DrY27OZ8HGY1tmchlbkqes/Schedule-Keeper?node-id=12-2&p=f&t=gkQeY0d9I6aBPi8E-0))
+- Download : [Here](https://github.com/anisharma07/React-native-attendance-app/releases/download/v1.0.4/app-release.apk)
 
-- Download at: [apk link](https://github.com/anisharma07/React-native-attendance-app/releases/download/v1.0.4/app-release.apk)
+- Figma Design : [Visit](https://www.figma.com/design/DrY27OZ8HGY1tmchlbkqes/Schedule-Keeper?node-id=12-2&p=f&t=gkQeY0d9I6aBPi8E-0)
+
 
 ## Features
 
-- 📊 **Track Attendance**: Easily mark attendance for different classes or events.
-- 🤖 **AI Scheduling**: Generate your time table instantly and optimize your schedule.(under development)
-
-- 📆 **Timetable Management**: Create, edit, and manage class or event timetables effortlessly.
+- 📊 **Track Attendance**: Easily mark & monitor attendance for different classes or events.
+- 🤖 **AI Scheduling**: Instantly generate an optimized timetable based on your inputs or CSV file.
+- 🔁 **Timetable Sharing**: Share your timetable with others — they can import it directly without manually entering anything.
+- 📋 **Task Chat**: Add, manage, and mark tasks as complete — like a to-do list with built-in accountability.
+- 📆 **Timetable Management**: Create, edit, and organize your event schedules effortlessly.
 - 🔔 **Reminders & Alerts**: Set alerts to remind you of low attendance.
-- ☁️ **Cloud Sync (Optional)**: Sync data across multiple devices.
+- ☁️ **Cloud Sync**: Sync data across multiple devices.
 
 ## App Screenshot
 
-| ![Image 1](./src/assets/screenshots/ss1.jpeg) | ![Image 2](./src/assets/screenshots/ss3.jpeg) | ![Image 3](./src/assets//screenshots/ss4.jpeg) |
+| ![Image 1](./src/assets/screenshots/ss1.jpeg) | ![Image 2](./src/assets/screenshots/ss2.jpeg) | ![Image 3](./src/assets//screenshots/ss3.jpeg) |
 | --------------------------------------------- | --------------------------------------------- | ---------------------------------------------- |
-| ![Image 4](./src/assets/screenshots/ss8.jpeg) | ![Image 5](./src/assets/screenshots/ss7.jpeg) | ![Image 6](./src/assets/screenshots/ss6.jpeg)  |
-
-## 🚀 Quick Start
-
-Ready to get started? Check out our detailed setup guide:
-
-📖 **[Setup & Installation Guide](.github/SETUP.md)**
+| ![Image 4](./src/assets/screenshots/ss4.jpeg) | ![Image 5](./src/assets/screenshots/ss5.jpeg) | ![Image 6](./src/assets/screenshots/ss6.jpeg)  |
 
 ## 🤝 Contributing
 
-We welcome contributions! Please read our contribution guidelines before starting any work:
+We’d love your help in improving this project! Before diving in, please take a moment to review our contribution guidelines:
 
 📋 **[Contributing Guidelines](.github/CONTRIBUTING.md)**
+
+## 🚀 Quick Start
+
+All set with the guidelines? Jump right into development by following our step-by-step setup instructions:
+
+📖 **[Setup & Installation Guide](.github/SETUP.md)**
 
 ## Tech Stack
 
@@ -52,5 +54,5 @@ This project is licensed under the **MIT License**.
 For issues or suggestions, create a GitHub issue or contact me at [anis42390@gmail.com].
 
 <p align="center">
-  🌈✨ <strong>Vibe • Coding • Imaginations</strong> ✨🌈  
+  ✨ <strong>Vibe • Coding • Imaginations</strong> ✨
 </p>
