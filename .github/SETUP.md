@@ -12,20 +12,34 @@ Ensure you have the following installed:
 
 ## Installation Steps
 
-### 1. Clone the Repository
+### Step 1: Fork the Repository
 
-```sh
-git clone https://github.com/<your_user_name>/Attendance-AI.git
-cd Attendance-AI
+1. Visit the [project repository](https://github.com/anisharma07/Attendance-AI)
+2. Click the **"Fork"** button at the top-right corner to create a personal copy of the repository in your GitHub account.
+3. Once forked, go to your forked repo and click the "Code" button.
+4. Copy the repository link (choose either HTTPS or SSH) to clone it locally.
+
+### Step 2: Clone Your Fork
+
+1. Open your terminal and run the following command:
+
+```bash
+git clone https://github.com/YOUR_USERNAME/Attendance-AI.git
+```
+Make sure to replace the above URL with the repository link you copied.
+
+### Step 3: Open Your Project
+```bash
+code Attendance-AI
 ```
 
-### 2. Install Dependencies
+### Step 4: Install Dependencies
 
 ```sh
-yarn install
+cd Attendance-AI && yarn install && cd android && touch keystore.properties && cp keystore-template.properties keystore.properties
 ```
 
-### 3. Run the App
+### Step 5: Run the App
 
 - **Start Metro Bundler:**
 
@@ -36,19 +50,19 @@ yarn start
 - **For Android:**
 
 ```sh
-npx react-native run-android
+yarn react-native run-android
 ```
 
 - **For iOS (Mac users only):**
 
 ```sh
-npx react-native run-ios
+yarn react-native run-ios
 ```
 
 - **If using Expo:**
 
 ```sh
-npx expo start
+yarn expo start
 ```
 
 ## Environment Variables

@@ -1,25 +1,6 @@
 # Contributing to Attendance & Time Table App
 
-We welcome contributions to the Attendance & Time Table App! This guide will help you get started with contributing to our project.
-
-## 🚀 Getting Started
-
-### Step 1: Fork the Repository
-
-1. Visit the [project repository](https://github.com/anisharma07/Attendance-AI)
-2. Click the **"Fork"** button in the top-right corner
-3. This creates a copy of the repository in your GitHub account
-
-### Step 2: Clone Your Fork
-
-```bash
-git clone https://github.com/YOUR_USERNAME/Attendance-AI.git
-cd Attendance-AI
-```
-
-### Step 3: Set Up the Development Environment
-
-Follow the complete setup instructions in our [**SETUP.md**](https://github.com/anisharma07/Attendance-AI/blob/main/.github/SETUP.md) file to configure your development environment.
+We welcome contributions to the Attendance & Time Table App! This guide will help you get started with contributing to our project after setup.
 
 ## 📋 Contribution Workflow
 
@@ -37,7 +18,7 @@ Follow the complete setup instructions in our [**SETUP.md**](https://github.com/
 - Always check issue descriptions for dependency information
 - Complete prerequisite issues first or wait for them to be resolved
 
-### 3. Create a Feature Branch
+### 3. Create a Branch
 
 ```bash
 git checkout -b feature/#<issue-number-you-are-working-on>
@@ -56,31 +37,17 @@ git checkout -b feature/#<issue-number-you-are-working-on>
 - Add comments where necessary
 - Test your changes thoroughly
 
-### 5. Commit Your Changes
-
-#### Clean Commit Messages
-
-Use the following format for commit messages:
-
-```
-<type>(<scope>): <description>
-
-[optional body]
-
-[optional footer]
+### 5. Add your modified files
+```bash
+git init
+git add #<filename or . to add all files>
 ```
 
-**Commit Types:**
-
-- `feat`: New feature
-- `fix`: Bug fix
-- `docs`: Documentation changes
-- `style`: Code style changes (formatting, missing semicolons, etc.)
-- `refactor`: Code refactoring
-- `test`: Adding or updating tests
-- `chore`: Build process or auxiliary tool changes
+### 6. Commit Your Changes
 
 **Examples:**
+
+Use the following examples for clean commit messages:
 
 ```bash
 git commit -m "feat: add AI scheduling functionality (fixes #42)"
@@ -89,13 +56,13 @@ git commit -m "docs: update README with new installation steps (fixes #15)"
 git commit -m "style: format code according to ESLint rules (fixes #33)"
 ```
 
-### 6. Push Your Changes
+### 7. Push Your Changes
 
 ```bash
-git push origin feature/#<issue-number>
+git push origin #<branch name>
 ```
 
-### 7. Create a Pull Request
+### 8. Create a Pull Request
 
 1. Go to your fork on GitHub
 2. Click **"New Pull Request"**
@@ -103,9 +70,6 @@ git push origin feature/#<issue-number>
 4. Reference the issue number in the description (e.g., "Closes #42")
 5. Submit the pull request
 
-### 8. Close the Issue
-
-After your PR is successfully merged, go to the issue page that mark the issue as completed that have been merged.
 
 ## 📝 Code Guidelines
 
@@ -134,4 +98,3 @@ After your PR is successfully merged, go to the issue page that mark the issue a
 - [ ] Made clean commits with proper messages
 - [ ] Tested changes thoroughly
 - [ ] Created pull request
-- [ ] Closed issue after successful merge

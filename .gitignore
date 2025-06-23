@@ -94,3 +94,4 @@ android/app/my-release-key.jks
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+yarn.lock
