@@ -31,6 +31,7 @@
     "react-native-pager-view": "^6.8.1",
     "react-native-safe-area-context": "^5.0.0",
     "react-native-screens": "^4.3.0",
+    "react-native-share": "^12.1.0",
     "react-native-splash-screen": "^3.3.0",
     "react-native-svg": "^15.10.1",
     "react-native-swipe-gestures": "^1.0.5",
