@@ -646,4 +646,19 @@ export const useStore = create<StoreState>()(
   ),
 );
 
+// Debug overlay for modal visibility (for development only)
+// Place this in your CustomTabBar or main screen, not in the store
+// Example usage:
+// <View style={{position: 'absolute', top: 40, left: 0, right: 0, zIndex: 9999, alignItems: 'center'}} pointerEvents="none">
+//   <Text style={{backgroundColor: 'rgba(255,0,0,0.7)', color: '#fff', padding: 8, borderRadius: 8, fontSize: 16}}>
+//     Modal visible: {modalVisible ? 'YES' : 'NO'}
+//   </Text>
+// </View>
+// To debug modal rendering issues, add a visible background to your modal content:
+// In FloatingActionModal.tsx, in styles.modalContent, add:
+//   backgroundColor: '#222', // or any visible color
+// And/or add a debug Text at the top of the modal content:
+//   <Text style={{color: 'white', fontSize: 24, zIndex: 9999}}>MODAL DEBUG</Text>
+// This will help you see if the modal content is being rendered but is invisible.
+
 export default useStore;

@@ -10,47 +10,53 @@ export function generateRegisterCSV(registers: { name: string, cards: CardInterf
 
   if (isSingleRegister) {
     const register = registers[0];
-    csv += `${register.name}\n\n`;
-
+    csv += `${register.name}\n`;
     dayKeys.forEach((dayKey, i) => {
       const subjectRows: string[] = [];
       register.cards.forEach(card => {
         const slots = card.days[dayKey] || [];
         slots.forEach(slot => {
-          subjectRows.push(`${card.title},${slot.start},${slot.end},${slot.roomName || ''}`);
+          // Always output 4 columns, trim all values
+          subjectRows.push([
+            card.title.trim(),
+            (slot.start || '').trim(),
+            (slot.end || '').trim(),
+            (slot.roomName || '').trim()
+          ].join(','));
         });
       });
-
       if (subjectRows.length > 0) {
         csv += `Day: ${dayNames[i]}\n`;
         csv += `Subject,Start Time,End Time,Room\n`;
-        csv += subjectRows.join('\n') + '\n\n';
+        csv += subjectRows.join('\n') + '\n';
       }
     });
   } else {
     dayKeys.forEach((dayKey, i) => {
       let daySection = `,Day: ${dayNames[i]}\n`;
-
       registers.forEach(register => {
         const subjectRows: string[] = [];
         register.cards.forEach(card => {
           const slots = card.days[dayKey] || [];
           slots.forEach(slot => {
-            subjectRows.push(`,${card.title},${slot.start},${slot.end},${slot.roomName || ''}`);
+            subjectRows.push([
+              '',
+              card.title.trim(),
+              (slot.start || '').trim(),
+              (slot.end || '').trim(),
+              (slot.roomName || '').trim()
+            ].join(','));
           });
         });
-
         if (subjectRows.length > 0) {
           daySection += `${register.name},Subject,Start Time,End Time,Room\n`;
-          daySection += subjectRows.join('\n') + '\n\n';
+          daySection += subjectRows.join('\n') + '\n';
         }
       });
-
       if (daySection.trim()) {
         csv += daySection;
       }
     });
   }
-
-  return csv;
+  return csv.trim();
 }
