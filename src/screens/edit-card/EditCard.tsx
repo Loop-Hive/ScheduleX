@@ -92,7 +92,8 @@ const EditCard: React.FC = ({navigation, route}: any) => {
     }));
   };
 
-  const registerName = registers[card_register].name;
+  // Use optional chaining to avoid crash if register is missing
+  const registerName = registers[card_register]?.name || '';
   const [card, setCard] = useState<CardInterface>({
     id: 1,
     title: '',

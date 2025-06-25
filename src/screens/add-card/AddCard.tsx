@@ -244,7 +244,7 @@ const AddCard: React.FC = ({navigation}: any) => {
               currDayTime.isAM_start,
             ),
             end: convertTo24Hrs(currDayTime.endTime, currDayTime.isAM_end),
-            roomName: currDayTime.classroom || card.defaultClassroom || null,
+            roomName: null, // Do not set classroom in slot
           },
         ],
       },
@@ -252,11 +252,11 @@ const AddCard: React.FC = ({navigation}: any) => {
     if (Platform.OS === 'android') {
       ToastAndroid.show('New Slot Added', ToastAndroid.SHORT);
     }
-    // Reset classroom field after adding slot
-    setCurrDayTime(prev => ({
-      ...prev,
-      classroom: '',
-    }));
+    // Do NOT reset classroom field after adding slot
+    // setCurrDayTime(prev => ({
+    //   ...prev,
+    //   classroom: '',
+    // }));
   };
 
   const handleRemoveTime = (day: string, dayTime: Slots) => {
@@ -510,7 +510,7 @@ const AddCard: React.FC = ({navigation}: any) => {
                     {convertToUTM(dayTime.start)}
                     {' - '}
                     {convertToUTM(dayTime.end)}
-                    {dayTime.roomName && `, ${dayTime.roomName}`}
+                    {/* Remove classroom from slot label */}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity

@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useRef} from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,8 @@ import {
   Modal,
   TextInput,
   Alert,
-  ToastAndroid
+  ToastAndroid,
+  Animated,
 } from 'react-native';
 import Share from 'react-native-share';
 import RNFS from 'react-native-fs';
@@ -146,6 +147,27 @@ const ManageScheduleScreen: React.FC<ManageScheduleScreenProps> = ({navigation})
   // Export modal state
   const [showExportModal, setShowExportModal] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState('');
+  const exportErrorAnim = useRef(new Animated.Value(0)).current;
+
+  // Animate export error banner
+  useEffect(() => {
+    if (exportError !== '') {
+      Animated.timing(exportErrorAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+      const timer = setTimeout(() => {
+        Animated.timing(exportErrorAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }).start(() => setExportError(''));
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [exportError, exportErrorAnim]);
 
   // Initialize selectedRegisters if empty (handles first app launch)
   useEffect(() => {
@@ -307,7 +329,45 @@ const ManageScheduleScreen: React.FC<ManageScheduleScreenProps> = ({navigation})
 
   // Export handler
   const handleExport = async () => {
+    if (selectedRegisters.length !== 1) {
+      setExportError('Please select only one schedule to export.');
+      setTimeout(() => setExportError(''), 3000);
+      return;
+    }
     setShowExportModal(true);
+  };
+
+  // Generate CSV in the format: first column = subjects, first row = days, cells = time-room
+  const generateRegisterCSV = (registerList: { name: string, cards: CardInterface[] }[]) => {
+    if (registerList.length !== 1) return '';
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const dayKeys = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+    const { cards } = registerList[0];
+    // Get all unique subject titles
+    const subjects = cards.map(card => card.title);
+    // Header row
+    let csv = ',' + days.join(',') + '\n';
+    // For each subject, build a row
+    subjects.forEach(subject => {
+      const card = cards.find(c => c.title === subject);
+      let row = subject;
+      dayKeys.forEach(dayKey => {
+        const slots = card?.days[dayKey as keyof Days] || [];
+        if (slots.length === 0) {
+          row += ',';
+        } else {
+          // Join all slots for the day
+          const slotStr = (slots as Slots[]).map((slot: Slots) => {
+            let time = `${slot.start}-${slot.end}`;
+            if (slot.roomName) time += ` - ${slot.roomName}`;
+            return time;
+          }).join(' | ');
+          row += ',' + slotStr;
+        }
+      });
+      csv += row + '\n';
+    });
+    return csv;
   };
 
   const exportSelectedRegistersCSV = async (checkOnly = false, overwrite = false) => {
@@ -683,6 +743,19 @@ const ManageScheduleScreen: React.FC<ManageScheduleScreenProps> = ({navigation})
 
   const daysOfWeek = getOrderedDays();  return (
     <View style={styles.container}>
+      {/* Export error notification */}
+      {exportError !== '' && (
+        <Animated.View
+          style={[
+            styles.exportErrorBanner,
+            {
+              opacity: exportErrorAnim,
+            },
+          ]}
+        >
+          <Text style={styles.exportErrorText}>{exportError}</Text>
+        </Animated.View>
+      )}
       {isDropdownOpen && (
         <TouchableOpacity
           style={styles.overlay}
@@ -1450,6 +1523,24 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     tintColor: '#8B5CF6',
+  },
+  exportErrorBanner: {
+    backgroundColor: '#EF4444',
+    paddingVertical: 15,
+    paddingHorizontal: 35,
+    borderRadius: 8,
+    margin: 16,
+    position: 'absolute',
+    top: 65,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 2000,
+  },
+  exportErrorText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
 });
 
