@@ -1,4 +1,4 @@
-package com.attendanceplanner
+package com.schedulex
 
 import android.os.Bundle // ✅ Import Bundle
 import com.facebook.react.ReactActivity
@@ -10,7 +10,7 @@ import com.google.firebase.FirebaseApp
 
 class MainActivity : ReactActivity() {
 
-    override fun getMainComponentName(): String = "AttendancePlanner" // ✅ getMainComponentName properly overridden  // ✅ getMainComponentName properly overridden
+    override fun getMainComponentName(): String = "ScheduleX" // ✅ getMainComponentName properly overridden  // ✅ getMainComponentName properly overridden
 
     override fun createReactActivityDelegate(): ReactActivityDelegate =
         DefaultReactActivityDelegate(this, mainComponentName, fabricEnabled)
