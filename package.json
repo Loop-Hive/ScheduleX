@@ -12,6 +12,7 @@
   "dependencies": {
     "@google/genai": "^1.5.1",
     "@react-native-async-storage/async-storage": "^2.1.0",
+    "@react-native-clipboard/clipboard": "^1.16.3",
     "@react-native-community/datetimepicker": "^8.3.0",
     "@react-native-documents/picker": "^10.1.2",
     "@react-native-picker/picker": "^2.10.2",
@@ -27,6 +28,8 @@
     "react-native-fs": "^2.20.0",
     "react-native-gesture-handler": "^2.24.0",
     "react-native-haptic-feedback": "^2.3.3",
+    "react-native-image-crop-picker": "^0.50.1",
+    "react-native-image-picker": "^8.2.1",
     "react-native-linear-gradient": "^2.8.3",
     "react-native-pager-view": "^6.8.1",
     "react-native-safe-area-context": "^5.0.0",
@@ -36,6 +39,7 @@
     "react-native-svg": "^15.10.1",
     "react-native-swipe-gestures": "^1.0.5",
     "react-native-toast-message": "^2.2.1",
+    "react-native-url-preview": "^1.1.9",
     "zustand": "^5.0.2"
   },
   "devDependencies": {

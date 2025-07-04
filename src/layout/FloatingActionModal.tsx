@@ -14,7 +14,7 @@ interface FloatingActionModalProps {
   visible: boolean;
   onClose: () => void;
   onAddSubject: () => void;
-  onAddTask: () => void;
+  // onAddTask: () => void;
   onGenerateAI: () => void;
   onImportSubjects: () => void;
 }
@@ -25,7 +25,7 @@ const FloatingActionModal: React.FC<FloatingActionModalProps> = ({
   visible,
   onClose,
   onAddSubject,
-  onAddTask,
+  // onAddTask,
   onGenerateAI,
   onImportSubjects,
 }) => {
@@ -73,20 +73,13 @@ const FloatingActionModal: React.FC<FloatingActionModalProps> = ({
     },
     {
       id: 2,
-      title: 'Add Task',
-      icon: '✅',
-      color: '#10B981',
-      onPress: onAddTask,
-    },
-    {
-      id: 3,
       title: 'Generate using AI',
       icon: '🤖',
       color: '#8B5CF6',
       onPress: onGenerateAI,
     },
     {
-      id: 4,
+      id: 3,
       title: 'Import Subjects',
       icon: '📥',
       color: '#F59E0B',

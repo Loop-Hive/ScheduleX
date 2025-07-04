@@ -12,133 +12,321 @@ export interface Task {
   category: string;
   timestamp: string;
   completedAt?: string;
+  type: 'task' | 'message' | 'image' | 'url';
+  imageUri?: string;
+  urlData?: {
+    url: string;
+    title?: string;
+    description?: string;
+    image?: string;
+  };
+}
+
+export interface TaskList {
+  id: number;
+  name: string;
+  color: string;
+  tasks: Task[];
+  completedTasks: Task[];
+  createdAt: string;
 }
 
 interface TaskStoreState {
-  tasks: Task[];
-  completedTasks: Task[];
-  updatedAt: Date | null;
-  addTask: (task: Omit<Task, 'id'>) => void;
-  toggleTaskCompletion: (taskId: number) => void;
-  deleteTask: (taskId: number) => void;
-  deleteCompletedTask: (taskId: number) => void;
-  clearAllTasks: () => void;
-  clearAllCompletedTasks: () => void;
-  updateTask: (taskId: number, updates: Partial<Task>) => void;
+  taskLists: TaskList[];
+  activeListId: number;
+  addTaskList: (name: string, color: string) => void;
+  deleteTaskList: (listId: number) => void;
+  renameTaskList: (listId: number, name: string) => void;
+  setActiveList: (listId: number) => void;
+  addTask: (listId: number, task: Omit<Task, 'id'>) => void;
+  toggleTaskCompletion: (listId: number, taskId: number) => void;
+  deleteTask: (listId: number, taskId: number) => void;
+  deleteCompletedTask: (listId: number, taskId: number) => void;
+  clearAllTasks: (listId: number) => void;
+  clearAllCompletedTasks: (listId: number) => void;
+  updateTask: (listId: number, taskId: number, updates: Partial<Task>) => void;
+  addImageTask: (listId: number, imageUri: string, title?: string) => void;
+  addUrlTask: (listId: number, url: string, urlData?: any) => void;
 }
 
 export const useTaskStore = create<TaskStoreState>()(
   persist(
     set => ({
-      tasks: [
+      taskLists: [
         {
           id: 1,
-          title: 'Complete Math Assignment',
-          description: 'Solve problems 1-20 from Chapter 5',
-          completed: false,
-          priority: 'high',
-          dueDate: '2025-06-20',
-          category: 'Assignment',
-          timestamp: '10:30 AM',
+          name: 'List 1',
+          color: '#E5E7EB',
+          createdAt: new Date().toISOString(),
+          tasks: [
+            {
+              id: 1,
+              title: 'Complete Math Assignment',
+              description: 'Solve problems 1-20 from Chapter 5',
+              completed: false,
+              priority: 'high',
+              dueDate: '2025-06-20',
+              category: 'Assignment',
+              timestamp: '10:30 AM',
+              type: 'task',
+            },
+            {
+              id: 2,
+              title: 'Study for Physics Quiz',
+              description: 'Review chapters 8-10 on thermodynamics',
+              completed: false,
+              priority: 'medium',
+              dueDate: '2025-06-19',
+              category: 'Study',
+              timestamp: '11:45 AM',
+              type: 'task',
+            },
+            {
+              id: 3,
+              title: 'Prepare Chemistry Lab Report',
+              description: 'Write report on acid-base reactions experiment',
+              completed: false,
+              priority: 'high',
+              dueDate: '2025-06-21',
+              category: 'Lab Report',
+              timestamp: '2:15 PM',
+              type: 'task',
+            },
+          ],
+          completedTasks: [],
         },
         {
           id: 2,
-          title: 'Study for Physics Quiz',
-          description: 'Review chapters 8-10 on thermodynamics',
-          completed: false,
-          priority: 'medium',
-          dueDate: '2025-06-19',
-          category: 'Study',
-          timestamp: '11:45 AM',
+          name: 'List 2',
+          color: '#E5E7EB',
+          createdAt: new Date().toISOString(),
+          tasks: [],
+          completedTasks: [],
         },
         {
           id: 3,
-          title: 'Prepare Chemistry Lab Report',
-          description: 'Write report on acid-base reactions experiment',
-          completed: false,
-          priority: 'high',
-          dueDate: '2025-06-21',
-          category: 'Lab Report',
-          timestamp: '2:15 PM',
+          name: 'List 3',
+          color: '#E5E7EB',
+          createdAt: new Date().toISOString(),
+          tasks: [],
+          completedTasks: [],
         },
       ],
-      completedTasks: [],
-      updatedAt: null,
+      activeListId: 1,
 
-      addTask: taskData =>
+      addTaskList: (name, color) =>
+        set(state => ({
+          taskLists: [
+            ...state.taskLists,
+            {
+              id: Date.now(),
+              name,
+              color,
+              createdAt: new Date().toISOString(),
+              tasks: [],
+              completedTasks: [],
+            },
+          ],
+        })),
+
+      deleteTaskList: listId =>
         set(state => {
-          const newTask: Task = {
-            ...taskData,
-            id: Date.now(),
-            completed: false,
-          };
-          return {
-            tasks: [...state.tasks, newTask],
-            updatedAt: new Date(),
-          };
-        }),
+          // Prevent deletion of default list (id: 1)
+          if (listId === 1) {
+            return state;
+          }
 
-      toggleTaskCompletion: taskId =>
-        set(state => {
-          const taskIndex = state.tasks.findIndex(task => task.id === taskId);
-
-          if (taskIndex === -1) return state;
-
-          const task = state.tasks[taskIndex];
-          const updatedTask = {
-            ...task,
-            completed: true,
-            completedAt: new Date().toLocaleTimeString('en-US', {
-              hour: 'numeric',
-              minute: '2-digit',
-              hour12: true,
-            }),
-          };
-
-          const newTasks = state.tasks.filter(
-            (_, index) => index !== taskIndex,
+          const newTaskLists = state.taskLists.filter(
+            list => list.id !== listId,
           );
-          const newCompletedTasks = [...state.completedTasks, updatedTask];
+
+          // If we're deleting the active list, switch to the first available list
+          let newActiveListId = state.activeListId;
+          if (state.activeListId === listId) {
+            newActiveListId = newTaskLists.length > 0 ? newTaskLists[0].id : 1;
+          }
 
           return {
-            tasks: newTasks,
-            completedTasks: newCompletedTasks,
-            updatedAt: new Date(),
+            taskLists: newTaskLists,
+            activeListId: newActiveListId,
           };
         }),
 
-      deleteTask: taskId =>
+      renameTaskList: (listId, name) =>
         set(state => ({
-          tasks: state.tasks.filter(task => task.id !== taskId),
-          updatedAt: new Date(),
-        })),
-
-      deleteCompletedTask: taskId =>
-        set(state => ({
-          completedTasks: state.completedTasks.filter(
-            task => task.id !== taskId,
+          taskLists: state.taskLists.map(list =>
+            list.id === listId ? {...list, name} : list,
           ),
-          updatedAt: new Date(),
         })),
 
-      clearAllTasks: () =>
+      setActiveList: listId =>
         set(() => ({
-          tasks: [],
-          updatedAt: new Date(),
+          activeListId: listId,
         })),
 
-      clearAllCompletedTasks: () =>
-        set(() => ({
-          completedTasks: [],
-          updatedAt: new Date(),
-        })),
-
-      updateTask: (taskId, updates) =>
+      addTask: (listId, taskData) =>
         set(state => ({
-          tasks: state.tasks.map(task =>
-            task.id === taskId ? {...task, ...updates} : task,
+          taskLists: state.taskLists.map(list =>
+            list.id === listId
+              ? {
+                  ...list,
+                  tasks: [
+                    ...list.tasks,
+                    {
+                      ...taskData,
+                      id: Date.now(),
+                      completed: false,
+                    },
+                  ],
+                }
+              : list,
           ),
-          updatedAt: new Date(),
+        })),
+
+      toggleTaskCompletion: (listId, taskId) =>
+        set(state => ({
+          taskLists: state.taskLists.map(list => {
+            if (list.id !== listId) return list;
+
+            const taskIndex = list.tasks.findIndex(task => task.id === taskId);
+            if (taskIndex === -1) return list;
+
+            const task = list.tasks[taskIndex];
+            const updatedTask = {
+              ...task,
+              completed: true,
+              completedAt: new Date().toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true,
+              }),
+            };
+
+            const newTasks = list.tasks.filter(
+              (_, index) => index !== taskIndex,
+            );
+            const newCompletedTasks = [...list.completedTasks, updatedTask];
+
+            return {
+              ...list,
+              tasks: newTasks,
+              completedTasks: newCompletedTasks,
+            };
+          }),
+        })),
+
+      deleteTask: (listId, taskId) =>
+        set(state => ({
+          taskLists: state.taskLists.map(list =>
+            list.id === listId
+              ? {
+                  ...list,
+                  tasks: list.tasks.filter(task => task.id !== taskId),
+                }
+              : list,
+          ),
+        })),
+
+      deleteCompletedTask: (listId, taskId) =>
+        set(state => ({
+          taskLists: state.taskLists.map(list =>
+            list.id === listId
+              ? {
+                  ...list,
+                  completedTasks: list.completedTasks.filter(
+                    task => task.id !== taskId,
+                  ),
+                }
+              : list,
+          ),
+        })),
+
+      clearAllTasks: listId =>
+        set(state => ({
+          taskLists: state.taskLists.map(list =>
+            list.id === listId ? {...list, tasks: []} : list,
+          ),
+        })),
+
+      clearAllCompletedTasks: listId =>
+        set(state => ({
+          taskLists: state.taskLists.map(list =>
+            list.id === listId ? {...list, completedTasks: []} : list,
+          ),
+        })),
+
+      updateTask: (listId, taskId, updates) =>
+        set(state => ({
+          taskLists: state.taskLists.map(list =>
+            list.id === listId
+              ? {
+                  ...list,
+                  tasks: list.tasks.map(task =>
+                    task.id === taskId ? {...task, ...updates} : task,
+                  ),
+                }
+              : list,
+          ),
+        })),
+
+      addImageTask: (listId, imageUri, title) =>
+        set(state => ({
+          taskLists: state.taskLists.map(list =>
+            list.id === listId
+              ? {
+                  ...list,
+                  tasks: [
+                    ...list.tasks,
+                    {
+                      id: Date.now(),
+                      title: title || 'Image',
+                      description: '',
+                      completed: false,
+                      priority: 'medium',
+                      dueDate: new Date().toISOString().split('T')[0],
+                      category: 'Media',
+                      timestamp: new Date().toLocaleTimeString('en-US', {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true,
+                      }),
+                      type: 'image',
+                      imageUri,
+                    },
+                  ],
+                }
+              : list,
+          ),
+        })),
+
+      addUrlTask: (listId, url, urlData) =>
+        set(state => ({
+          taskLists: state.taskLists.map(list =>
+            list.id === listId
+              ? {
+                  ...list,
+                  tasks: [
+                    ...list.tasks,
+                    {
+                      id: Date.now(),
+                      title: urlData?.title || url,
+                      description: urlData?.description || '',
+                      completed: false,
+                      priority: 'medium',
+                      dueDate: new Date().toISOString().split('T')[0],
+                      category: 'Link',
+                      timestamp: new Date().toLocaleTimeString('en-US', {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true,
+                      }),
+                      type: 'url',
+                      urlData: {url, ...urlData},
+                    },
+                  ],
+                }
+              : list,
+          ),
         })),
     }),
     {

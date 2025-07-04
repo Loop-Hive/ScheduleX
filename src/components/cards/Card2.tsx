@@ -1,7 +1,7 @@
 import React, {useState, useEffect} from 'react';
 import {View, Text, TouchableOpacity, Image} from 'react-native';
 import styles from '../../styles/CardStyles';
-import MiniConicGradient from './MiniConicGradient';
+import MiniConicGradient from './card-components/MiniConicGradient';
 import useStore from '../../store/store';
 import {Days, Slots} from '../../types/cards';
 
@@ -17,7 +17,7 @@ interface CardProps {
   days: Days;
   defaultClassroom?: string;
 }
-const MiniCard: React.FC<CardProps> = ({
+const Card2: React.FC<CardProps> = ({
   id,
   title,
   present,
@@ -94,9 +94,7 @@ const MiniCard: React.FC<CardProps> = ({
           {title.length > 8 ? title.substring(0, 8) + '..' : title}
         </Text>
         {uniqueClassrooms.length > 0 && (
-          <Text style={styles.miniClassroomText}>
-            📍 {uniqueClassrooms[0]}
-          </Text>
+          <Text style={styles.miniClassroomText}>📍 {uniqueClassrooms[0]}</Text>
         )}
       </View>
       <View>
@@ -137,4 +135,4 @@ const MiniCard: React.FC<CardProps> = ({
   );
 };
 
-export default MiniCard;
+export default Card2;

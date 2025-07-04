@@ -283,7 +283,7 @@ const Sidebar: React.FC = () => {
     <View style={styles.container}>
       {/* Sidebar */}
       <View style={styles.mainContent}>
-        <Text style={styles.sidebarText}>My Registers</Text>
+        <Text style={styles.sidebarText}>My Schedules</Text>
       </View>
       {/* register component */}
       <ScrollView

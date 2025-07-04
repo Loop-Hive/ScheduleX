@@ -1,5 +1,5 @@
 import React, {useState, useEffect} from 'react';
-import Card from '../../components/cards/Card';
+import Card1 from '../../components/cards/Card1';
 import Spacer from '../../components/Spacer';
 import {
   View,
@@ -10,7 +10,7 @@ import {
   TouchableOpacity,
   Image,
 } from 'react-native';
-import MiniCard from '../../components/cards/MiniCard';
+import Card2 from '../../components/cards/Card2';
 import useStore from '../../store/store';
 import {CardInterface} from '../../types/cards';
 import Header from '../../layout/Header';
@@ -75,7 +75,7 @@ const SubjectsScreen: React.FC<SubjectsScreenProps> = ({
         {/* Cards */}
         {registers[activeRegister].card_size === 'normal' &&
           currentRegister.map((card, index) => (
-            <Card
+            <Card1
               key={card.id}
               id={card.id}
               title={card.title}
@@ -96,7 +96,7 @@ const SubjectsScreen: React.FC<SubjectsScreenProps> = ({
           ))}
         {registers[activeRegister].card_size === 'small' &&
           currentRegister.map(card => (
-            <MiniCard
+            <Card2
               key={card.id}
               id={card.id}
               title={card.title}

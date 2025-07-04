@@ -17,12 +17,13 @@ import {
   // TaskIcon,
   PlusIcon,
   ProfileIcon,
+  TaskIcon,
 } from '../../../assets/icons/navigation/new';
 import FloatingActionModal from '../../FloatingActionModal';
 
 const {width} = Dimensions.get('window');
 const NORMAL_COLOR = '#9CA3AF';
-const ACTIVE_COLOR = '#6366F1';
+const ACTIVE_COLOR = '#646ECB';
 
 interface CustomTabBarProps extends BottomTabBarProps {}
 
@@ -82,7 +83,7 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({state, navigation}) => {
     {name: 'Home', icon: HomeIcon, label: 'Home'},
     {name: 'Schedule', icon: ScheduleIcon, label: 'Schedule'},
     {name: 'Subjects', icon: SubjectIcon, label: 'Subjects'},
-    {name: 'Settings', icon: ProfileIcon, label: 'Settings'},
+    {name: 'Tasks', icon: TaskIcon, label: 'Tasks'},
   ];
 
   const rotateInterpolate = plusRotation.interpolate({
@@ -112,11 +113,6 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({state, navigation}) => {
 
   const handleAddSubject = () => {
     navigation.navigate('Add');
-  };
-
-  const handleAddTask = () => {
-    // Navigate to add task screen when implemented
-    console.log('Add Task pressed');
   };
 
   const handleGenerateAI = () => {
@@ -221,11 +217,11 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({state, navigation}) => {
 
           {/* Tasks Tab */}
           <TouchableOpacity
-            onPress={() => handleTabPress('Settings')}
+            onPress={() => handleTabPress('Tasks')}
             style={styles.tabButton}
             activeOpacity={0.7}>
             <View style={styles.tabContent}>
-              <ProfileIcon
+              <TaskIcon
                 width={24}
                 height={24}
                 color={state.index === 3 ? ACTIVE_COLOR : NORMAL_COLOR}
@@ -235,7 +231,7 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({state, navigation}) => {
                   styles.tabLabel,
                   {color: state.index === 3 ? ACTIVE_COLOR : NORMAL_COLOR},
                 ]}>
-                Settings
+                Tasks
               </Text>
             </View>
           </TouchableOpacity>
@@ -270,7 +266,7 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({state, navigation}) => {
         visible={modalVisible}
         onClose={handleModalClose}
         onAddSubject={handleAddSubject}
-        onAddTask={handleAddTask}
+        // onAddTask={handleAddTask}
         onGenerateAI={handleGenerateAI}
         onImportSubjects={handleImportSubjects}
       />

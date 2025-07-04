@@ -15,14 +15,18 @@ const Header: React.FC<Props> = ({toggler, changeStack, registerName}) => {
       <View style={styles.headerContent}>
         <TouchableOpacity onPress={toggler}>
           <Image
-            source={require('../assets/images/registers.png')}
+            source={require('../assets/images/menu-icon.png')}
             style={styles.registerIcon}
           />
         </TouchableOpacity>
 
         <Text style={styles.registerNameTxt}>{registerName}</Text>
-        <TouchableOpacity onPress={() => navigation.navigate('Tasks' as never)}>
-          <ChatIcon width={35} height={35} />
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Settings' as never)}>
+          <Image
+            source={require('../assets/images/profile.png')}
+            style={styles.registerIcon}
+          />
         </TouchableOpacity>
       </View>
     </View>

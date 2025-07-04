@@ -1,7 +1,7 @@
 import React, {useState, useEffect} from 'react';
 import {View, Text, TouchableOpacity, Image, ToastAndroid} from 'react-native';
 import styles from '../../styles/CardStyles';
-import ConicGradient from './ConicGradient';
+import ConicGradient from './card-components/ConicGradient';
 import useStore from '../../store/store';
 import {Days, Slots} from '../../types/cards';
 
@@ -25,7 +25,7 @@ interface CardProps {
   defaultClassroom?: string;
 }
 
-const Card: React.FC<CardProps> = ({
+const Card1: React.FC<CardProps> = ({
   id,
   title,
   present,
@@ -245,4 +245,4 @@ const Card: React.FC<CardProps> = ({
   );
 };
 
-export default Card;
+export default Card1;

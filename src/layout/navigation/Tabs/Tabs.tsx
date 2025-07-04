@@ -21,7 +21,6 @@ type TabParamList = {
   Home: undefined;
   Schedule: undefined;
   Subjects: undefined;
-  Settings: undefined;
 };
 const Tab = createBottomTabNavigator<TabParamList>();
 
@@ -130,7 +129,6 @@ const Tabs: React.FC = ({navigation}: any) => {
             />
           )}
         </Tab.Screen>
-        <Tab.Screen name="Settings">{props => <SettingsScreen />}</Tab.Screen>
       </Tab.Navigator>
       {/* SIDEBAR  */}
       <Animated.View

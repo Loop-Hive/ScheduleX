@@ -7,6 +7,7 @@ import ViewCardDetails from '../../screens/card-metrics/ViewCardDetails';
 import AiScreen from '../../screens/generate-ai/AiScreen';
 import {NavigationContainer} from '@react-navigation/native';
 import MaterialTopTabsNavigator from './MaterialTopTabsNavigation';
+import SettingsScreen from '../../screens/user-settings/SettingsScreen';
 
 export type RootStackParamList = {
   App: undefined;
@@ -15,6 +16,7 @@ export type RootStackParamList = {
   EditSchedule: undefined;
   CardDetails: {card_register: number; card_id: number};
   Ai: undefined;
+  Settings: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -59,6 +61,11 @@ const AppNavigator: React.FC = () => {
           name="Ai"
           component={AiScreen}
           options={{animation: 'slide_from_bottom'}}
+        />
+        <Stack.Screen
+          name="Settings"
+          component={SettingsScreen}
+          options={{animation: 'slide_from_right'}}
         />
       </Stack.Navigator>
     </NavigationContainer>
