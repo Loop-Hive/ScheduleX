@@ -1,4 +1,4 @@
-# Attendance & Time Table App
+# ScheduleX: Attendance & Time Table Scheduling App
 
 A cross platform **React Native** application  designed to help you track attendance and manage shcedules with ease.
 
