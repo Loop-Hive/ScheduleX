@@ -19,10 +19,14 @@ on:
         required: false
         default: true
         type: boolean
+  schedule:
+    # Run every 6 hours (at 0:00, 6:00, 12:00, 18:00 UTC)
+    - cron: "0 */6 * * *"
 
 jobs:
   audit-codebase:
     runs-on: ubuntu-latest
+    timeout-minutes: 120
 
     permissions:
       contents: write
@@ -30,56 +34,243 @@ jobs:
       issues: write
       actions: read
 
+    env:
+      AUDIT_SCOPE: ${{ github.event.inputs.audit_scope || 'all' }}
+      INCLUDE_SUGGESTIONS: ${{ github.event.inputs.include_suggestions || 'true' }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Check and handle existing claude-code-audit branch
-        id: check-branch
+      - name: Detect repository type and target branch
+        id: repo-info
         run: |
-          if git ls-remote --heads origin claude-code-audit | grep -q claude-code-audit; then
-            echo "branch_exists=true" >> $GITHUB_OUTPUT
-            echo "⚠️ Branch 'claude-code-audit' already exists!"
-            echo "🗑️ Automatically deleting existing branch..."
-            git push origin --delete claude-code-audit || echo "Branch deletion failed, but continuing..."
-            echo "✅ Existing branch deleted. Proceeding with audit."
+          echo "🔍 Detecting repository information..."
+
+          # Get repository information
+          REPO_FULL_NAME="${{ github.repository }}"
+          CURRENT_REPO_OWNER="${{ github.repository_owner }}"
+          CURRENT_REPO_NAME="${{ github.event.repository.name }}"
+          CURRENT_BRANCH="${{ github.ref_name }}"
+          DEFAULT_BRANCH="${{ github.event.repository.default_branch }}"
+
+          echo "current_repo_owner=$CURRENT_REPO_OWNER" >> $GITHUB_OUTPUT
+          echo "current_repo_name=$CURRENT_REPO_NAME" >> $GITHUB_OUTPUT
+          echo "current_branch=$CURRENT_BRANCH" >> $GITHUB_OUTPUT
+          echo "default_branch=$DEFAULT_BRANCH" >> $GITHUB_OUTPUT
+
+          # Check if this is a fork
+          IS_FORK="${{ github.event.repository.fork }}"
+          echo "is_fork=$IS_FORK" >> $GITHUB_OUTPUT
+
+          if [[ "$IS_FORK" == "true" ]]; then
+            echo "🍴 Repository is a fork. Attempting to get parent information..."
+            
+            # Try to get parent repository information via GitHub API
+            PARENT_INFO=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              "https://api.github.com/repos/$CURRENT_REPO_OWNER/$CURRENT_REPO_NAME" | \
+              jq -r '.parent // empty')
+            
+            if [[ -n "$PARENT_INFO" && "$PARENT_INFO" != "null" ]]; then
+              PARENT_OWNER=$(echo "$PARENT_INFO" | jq -r '.owner.login // empty')
+              PARENT_NAME=$(echo "$PARENT_INFO" | jq -r '.name // empty')
+              PARENT_DEFAULT_BRANCH=$(echo "$PARENT_INFO" | jq -r '.default_branch // "main"')
+              
+              if [[ -n "$PARENT_OWNER" && "$PARENT_OWNER" != "null" ]]; then
+                TARGET_REPO_OWNER="$PARENT_OWNER"
+                TARGET_REPO_NAME="$PARENT_NAME"
+                TARGET_BRANCH="$PARENT_DEFAULT_BRANCH"
+                echo "✅ Fork detected. Target: $PARENT_OWNER/$PARENT_NAME:$PARENT_DEFAULT_BRANCH"
+              else
+                echo "⚠️ Could not determine parent repository. Using current repo as target."
+                TARGET_REPO_OWNER="$CURRENT_REPO_OWNER"
+                TARGET_REPO_NAME="$CURRENT_REPO_NAME"
+                TARGET_BRANCH="$DEFAULT_BRANCH"
+              fi
+            else
+              echo "⚠️ Fork detected but parent info unavailable. Using current repo as target."
+              TARGET_REPO_OWNER="$CURRENT_REPO_OWNER"
+              TARGET_REPO_NAME="$CURRENT_REPO_NAME"
+              TARGET_BRANCH="$DEFAULT_BRANCH"
+            fi
           else
-            echo "branch_exists=false" >> $GITHUB_OUTPUT
-            echo "✅ Branch 'claude-code-audit' does not exist. Proceeding with audit."
+            # Original repository
+            TARGET_REPO_OWNER="$CURRENT_REPO_OWNER"
+            TARGET_REPO_NAME="$CURRENT_REPO_NAME"
+            TARGET_BRANCH="$DEFAULT_BRANCH"
+            echo "� Original repository. Target: $CURRENT_REPO_OWNER/$CURRENT_REPO_NAME:$DEFAULT_BRANCH"
           fi
 
+          echo "target_repo_owner=$TARGET_REPO_OWNER" >> $GITHUB_OUTPUT
+          echo "target_repo_name=$TARGET_REPO_NAME" >> $GITHUB_OUTPUT
+          echo "target_branch=$TARGET_BRANCH" >> $GITHUB_OUTPUT
+
+          # Generate unique branch name with timestamp
+          TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+          AUDIT_BRANCH="claude-audit-$TIMESTAMP"
+          echo "audit_branch=$AUDIT_BRANCH" >> $GITHUB_OUTPUT
+
+          echo "✅ Repository analysis complete"
+          echo "Current: $CURRENT_REPO_OWNER/$CURRENT_REPO_NAME"
+          echo "Target: $TARGET_REPO_OWNER/$TARGET_REPO_NAME:$TARGET_BRANCH"
+          echo "Audit branch: $AUDIT_BRANCH"
+
+      - name: Clean up old audit branches
+        continue-on-error: true
+        run: |
+          echo "🧹 Cleaning up old audit branches..."
+
+          # Delete old audit branches (older than 7 days)
+          git for-each-ref --format='%(refname:short) %(committerdate)' refs/remotes/origin/claude-audit-* | \
+          while read branch date; do
+            if [[ $(date -d "$date" +%s) -lt $(date -d "7 days ago" +%s) ]]; then
+              branch_name=${branch#origin/}
+              echo "🗑️ Deleting old branch: $branch_name"
+              git push origin --delete "$branch_name" || echo "Failed to delete $branch_name"
+            fi
+          done
+
       - name: Configure AWS credentials
+        id: aws-config
+        continue-on-error: false
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          aws-region: ${{ secrets.AWS_REGION || 'us-east-1' }}
+          mask-aws-account-id: true
 
-      - name: Setup Node.js
+      - name: Verify AWS configuration
+        run: |
+          echo "🔐 Verifying AWS configuration..."
+          aws sts get-caller-identity || {
+            echo "❌ AWS credentials not configured properly"
+            echo "Please ensure AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and AWS_REGION secrets are set"
+            exit 1
+          }
+          echo "✅ AWS credentials verified"
+
+      - name: Setup Node.js with robust caching
         uses: actions/setup-node@v4
         with:
-          node-version: "18"
+          node-version: "20"
           cache: "npm"
+          cache-dependency-path: "**/package-lock.json"
 
-      - name: Setup Python
-        uses: actions/setup-python@v4
+      - name: Setup Python with robust caching
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
+          cache: "pip"
 
-      - name: Install dependencies
+      - name: Install system dependencies
         run: |
-          npm install
-          pip install boto3 requests botocore PyGithub
+          echo "🔧 Installing system dependencies..."
 
-          # Install GitHub CLI as backup for PR creation
-          type -p curl >/dev/null || (sudo apt update && sudo apt install curl -y)
-          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
-          && sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
-          && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
-          && sudo apt update \
-          && sudo apt install gh -y
+          # Update package lists
+          sudo apt-get update -qq
+
+          # Install essential tools
+          sudo apt-get install -y --no-install-recommends \
+            curl \
+            jq \
+            tree \
+            git \
+            python3-pip \
+            python3-venv \
+            build-essential
+
+          echo "✅ System dependencies installed"
+
+      - name: Install GitHub CLI
+        run: |
+          echo "📥 Installing GitHub CLI..."
+
+          # Install GitHub CLI with retry logic
+          for i in {1..3}; do
+            if curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | \
+               sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg 2>/dev/null && \
+               sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg && \
+               echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | \
+               sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null && \
+               sudo apt-get update -qq && \
+               sudo apt-get install -y gh; then
+              echo "✅ GitHub CLI installed successfully"
+              break
+            else
+              echo "⚠️ Attempt $i failed, retrying..."
+              sleep 5
+            fi
+          done
+
+          # Verify installation
+          gh version || {
+            echo "❌ GitHub CLI installation failed"
+            exit 1
+          }
+
+      - name: Install Node.js dependencies
+        continue-on-error: false
+        run: |
+          echo "📦 Installing Node.js dependencies..."
+
+          # Check if package.json exists
+          if [[ -f "package.json" ]]; then
+            # Clean install with retry logic
+            for i in {1..3}; do
+              if npm ci --silent --no-audit --no-fund; then
+                echo "✅ npm dependencies installed successfully"
+                break
+              else
+                echo "⚠️ npm install attempt $i failed, cleaning and retrying..."
+                rm -rf node_modules package-lock.json
+                sleep 5
+                if [[ $i -eq 3 ]]; then
+                  echo "❌ npm install failed after 3 attempts"
+                  # Try with npm install as fallback
+                  npm install --silent --no-audit --no-fund || {
+                    echo "❌ npm install fallback also failed"
+                    echo "Continuing without Node.js dependencies..."
+                  }
+                fi
+              fi
+            done
+          else
+            echo "📄 No package.json found, skipping Node.js dependencies"
+          fi
+
+      - name: Install Python dependencies
+        continue-on-error: false
+        run: |
+          echo "🐍 Installing Python dependencies..."
+
+          # Upgrade pip first
+          python3 -m pip install --upgrade pip setuptools wheel
+
+          # Install required packages with retry logic
+          for i in {1..3}; do
+            if python3 -m pip install --no-cache-dir \
+              boto3>=1.34.0 \
+              requests>=2.31.0 \
+              botocore>=1.34.0 \
+              PyGithub>=2.1.0; then
+              echo "✅ Python dependencies installed successfully"
+              break
+            else
+              echo "⚠️ Python install attempt $i failed, retrying..."
+              sleep 5
+              if [[ $i -eq 3 ]]; then
+                echo "❌ Python dependencies installation failed"
+                exit 1
+              fi
+            fi
+          done
+
+          # Verify installations
+          python3 -c "import boto3, requests, github; print('✅ All Python modules imported successfully')"
 
       - name: Analyze codebase structure
         run: |
@@ -116,11 +307,16 @@ jobs:
       - name: Run Claude AI Code Audit
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          AWS_BEDROCK_MODEL_ID: ${{ secrets.AWS_BEDROCK_MODEL_ID }}
-          AUDIT_SCOPE: ${{ github.event.inputs.audit_scope }}
-          INCLUDE_SUGGESTIONS: ${{ github.event.inputs.include_suggestions }}
+          AWS_BEDROCK_MODEL_ID: ${{ secrets.AWS_BEDROCK_MODEL_ID || 'us.anthropic.claude-3-5-sonnet-20241022-v2:0' }}
+          AUDIT_SCOPE: ${{ env.AUDIT_SCOPE }}
+          INCLUDE_SUGGESTIONS: ${{ env.INCLUDE_SUGGESTIONS }}
           REPO_OWNER: ${{ github.repository_owner }}
           REPO_NAME: ${{ github.event.repository.name }}
+          IS_FORK: ${{ steps.repo-info.outputs.is_fork }}
+          TARGET_REPO_OWNER: ${{ steps.repo-info.outputs.target_repo_owner }}
+          TARGET_REPO_NAME: ${{ steps.repo-info.outputs.target_repo_name }}
+          TARGET_BRANCH: ${{ steps.repo-info.outputs.target_branch }}
+          AUDIT_BRANCH: ${{ steps.repo-info.outputs.audit_branch }}
         run: |
           cat << 'EOF' > claude_auditor.py
           import boto3
@@ -128,6 +324,773 @@ jobs:
           import os
           import subprocess
           import time
+          import random
+          import sys
+          from datetime import datetime
+          from botocore.config import Config
+          from github import Github, GithubException
+          import re
+
+          class RobustClaudeCodeAuditor:
+              def __init__(self):
+                  self.github_token = os.environ['GITHUB_TOKEN']
+                  self.bedrock_client = self.get_bedrock_client()
+                  self.model_id = os.environ.get('AWS_BEDROCK_MODEL_ID', 'us.anthropic.claude-3-5-sonnet-20241022-v2:0')
+                  self.audit_scope = os.environ.get('AUDIT_SCOPE', 'all')
+                  self.include_suggestions = os.environ.get('INCLUDE_SUGGESTIONS', 'true').lower() == 'true'
+                  
+                  # Repository information
+                  self.current_repo_owner = os.environ['REPO_OWNER']
+                  self.current_repo_name = os.environ['REPO_NAME']
+                  self.is_fork = os.environ.get('IS_FORK', 'false').lower() == 'true'
+                  self.target_repo_owner = os.environ.get('TARGET_REPO_OWNER', self.current_repo_owner)
+                  self.target_repo_name = os.environ.get('TARGET_REPO_NAME', self.current_repo_name)
+                  self.target_branch = os.environ.get('TARGET_BRANCH', 'main')
+                  self.audit_branch = os.environ.get('AUDIT_BRANCH', f"claude-audit-{int(time.time())}")
+                  
+                  print(f"🏗️ Audit Configuration:")
+                  print(f"   Current repo: {self.current_repo_owner}/{self.current_repo_name}")
+                  print(f"   Target repo: {self.target_repo_owner}/{self.target_repo_name}")
+                  print(f"   Target branch: {self.target_branch}")
+                  print(f"   Audit branch: {self.audit_branch}")
+                  print(f"   Is fork: {self.is_fork}")
+                  
+              def get_bedrock_client(self):
+                  """Initialize Bedrock client with robust error handling"""
+                  try:
+                      config = Config(
+                          read_timeout=300,
+                          connect_timeout=30,
+                          retries={
+                              'max_attempts': 10,
+                              'mode': 'adaptive'
+                          }
+                      )
+                      client = boto3.client('bedrock-runtime', config=config)
+                      
+                      # Test the connection
+                      try:
+                          client.list_foundation_models()
+                          print("✅ AWS Bedrock client initialized successfully")
+                      except Exception as e:
+                          print(f"⚠️ Bedrock connection test failed: {e}")
+                          
+                      return client
+                  except Exception as e:
+                      print(f"❌ Failed to initialize Bedrock client: {e}")
+                      sys.exit(1)
+
+              def read_file_safely(self, filepath, max_lines=200):
+                  """Read file content safely with robust error handling"""
+                  try:
+                      with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+                          lines = f.readlines()
+                          if len(lines) > max_lines:
+                              return ''.join(lines[:max_lines]) + f'\n... (truncated, {len(lines)-max_lines} more lines)'
+                          return ''.join(lines)
+                  except Exception as e:
+                      return f"Error reading file {filepath}: {str(e)}"
+
+              def analyze_codebase_structure(self):
+                  """Analyze codebase with enhanced error handling"""
+                  print("📊 Analyzing codebase structure...")
+                  
+                  context = {
+                      'project_structure': '',
+                      'key_files': {},
+                      'source_files': [],
+                      'dependencies': '',
+                      'file_stats': {}
+                  }
+                  
+                  try:
+                      # Read project structure
+                      if os.path.exists('project_structure.txt'):
+                          context['project_structure'] = self.read_file_safely('project_structure.txt', 100)
+                      
+                      # Read dependencies analysis
+                      if os.path.exists('dependencies_analysis.txt'):
+                          context['dependencies'] = self.read_file_safely('dependencies_analysis.txt', 50)
+                      
+                      # Read key configuration files
+                      key_files = [
+                          'package.json', 'tsconfig.json', 'vite.config.ts', 'vite.config.js',
+                          'capacitor.config.ts', 'ionic.config.json', '.eslintrc.json',
+                          '.eslintrc.js', 'webpack.config.js', 'next.config.js',
+                          'tailwind.config.js', 'postcss.config.js', 'jest.config.js',
+                          'requirements.txt', 'Pipfile', 'pyproject.toml', 'setup.py',
+                          'Dockerfile', 'docker-compose.yml', '.gitignore', 'README.md'
+                      ]
+                      
+                      for file in key_files:
+                          if os.path.exists(file):
+                              context['key_files'][file] = self.read_file_safely(file, 100)
+                      
+                      # Read source files list
+                      if os.path.exists('codebase_files.txt'):
+                          with open('codebase_files.txt', 'r') as f:
+                              context['source_files'] = [line.strip() for line in f.readlines() if line.strip()]
+                      
+                      # Calculate comprehensive file statistics
+                      total_files = len(context['source_files'])
+                      ts_files = len([f for f in context['source_files'] if f.endswith(('.ts', '.tsx'))])
+                      js_files = len([f for f in context['source_files'] if f.endswith(('.js', '.jsx'))])
+                      css_files = len([f for f in context['source_files'] if f.endswith(('.css', '.scss', '.sass', '.less'))])
+                      py_files = len([f for f in context['source_files'] if f.endswith('.py')])
+                      md_files = len([f for f in context['source_files'] if f.endswith('.md')])
+                      json_files = len([f for f in context['source_files'] if f.endswith('.json')])
+                      
+                      context['file_stats'] = {
+                          'total': total_files,
+                          'typescript': ts_files,
+                          'javascript': js_files,
+                          'css': css_files,
+                          'python': py_files,
+                          'markdown': md_files,
+                          'json': json_files
+                      }
+                      
+                      print(f"✅ Analyzed {total_files} files")
+                      
+                  except Exception as e:
+                      print(f"⚠️ Error in codebase analysis: {e}")
+                  
+                  return context
+
+              def sample_source_files(self, source_files, max_files=30):
+                  """Sample source files with improved prioritization"""
+                  print(f"📂 Sampling up to {max_files} source files for detailed analysis...")
+                  
+                  if not source_files:
+                      print("⚠️ No source files found")
+                      return {}
+                  
+                  # Enhanced priority patterns
+                  priority_patterns = [
+                      (r'src/.*\.(tsx?|jsx?)$', 10),  # React/TS components (highest priority)
+                      (r'.*service.*\.(ts|js)$', 9),    # Services
+                      (r'.*api.*\.(ts|js)$', 9),        # API related
+                      (r'.*util.*\.(ts|js)$', 8),       # Utilities
+                      (r'.*hook.*\.(ts|js)$', 8),       # Hooks
+                      (r'.*context.*\.(tsx?|jsx?)$', 8), # Contexts
+                      (r'.*config.*\.(ts|js)$', 7),     # Configuration
+                      (r'.*component.*\.(tsx?|jsx?)$', 7), # Components
+                      (r'.*\.css$', 6),                 # Styles
+                      (r'.*test.*\.(ts|js)$', 5),       # Tests
+                      (r'.*\.md$', 4),                  # Documentation
+                      (r'.*\.json$', 3),                # JSON files
+                  ]
+                  
+                  scored_files = []
+                  
+                  for file in source_files:
+                      score = 1  # Default score
+                      for pattern, pattern_score in priority_patterns:
+                          if re.search(pattern, file, re.IGNORECASE):
+                              score = pattern_score
+                              break
+                      scored_files.append((file, score))
+                  
+                  # Sort by score (highest first)
+                  scored_files.sort(key=lambda x: x[1], reverse=True)
+                  selected_files = [f[0] for f in scored_files[:max_files]]
+                  
+                  file_contents = {}
+                  for file_path in selected_files:
+                      if os.path.exists(file_path):
+                          content = self.read_file_safely(file_path, 200)
+                          file_contents[file_path] = content
+                          
+                  print(f"✅ Successfully sampled {len(file_contents)} files")
+                  return file_contents
+
+              def perform_audit_with_claude(self, codebase_context, sampled_files):
+                  """Enhanced Claude audit with better prompting"""
+                  
+                  scope_descriptions = {
+                      'all': 'Complete codebase audit covering security, maintainability, performance, and cleanup',
+                      'security': 'Security-focused audit for vulnerabilities and unsafe patterns',
+                      'performance': 'Performance audit for optimization opportunities',
+                      'maintainability': 'Maintainability audit for code quality and structure',
+                      'cleanup': 'Cleanup audit for dead code and unused dependencies'
+                  }
+                  
+                  # Build comprehensive audit prompt
+                  audit_prompt = self.build_audit_prompt(codebase_context, sampled_files, scope_descriptions)
+                  
+                  return self.generate_with_retry(audit_prompt)
+
+              def build_audit_prompt(self, codebase_context, sampled_files, scope_descriptions):
+                  """Build a comprehensive audit prompt"""
+                  
+                  audit_prompt = f"""You are an expert code auditor specializing in modern web development, including TypeScript, React, Node.js, Python, and cloud applications. 
+          You are performing a {scope_descriptions.get(self.audit_scope, 'comprehensive')} audit of a software project.
+
+          ## AUDIT SCOPE: {self.audit_scope.upper()}
+
+          ## PROJECT OVERVIEW
+          **File Statistics:**
+          - Total files: {codebase_context['file_stats']['total']}
+          - TypeScript files: {codebase_context['file_stats']['typescript']}
+          - JavaScript files: {codebase_context['file_stats']['javascript']}
+          - Python files: {codebase_context['file_stats']['python']}
+          - CSS files: {codebase_context['file_stats']['css']}
+          - Markdown files: {codebase_context['file_stats']['markdown']}
+          - JSON files: {codebase_context['file_stats']['json']}
+
+          **Project Structure:**
+          ```
+          {codebase_context['project_structure']}
+          ```
+
+          **Dependencies:**
+          ```
+          {codebase_context['dependencies']}
+          ```
+
+          ## CONFIGURATION FILES"""
+                  
+                  for file, content in codebase_context['key_files'].items():
+                      audit_prompt += f"\n**{file}:**\n```\n{content}\n```\n"
+                  
+                  audit_prompt += "\n## SOURCE CODE SAMPLES\n"
+                  
+                  for file_path, content in sampled_files.items():
+                      audit_prompt += f"\n**{file_path}:**\n```\n{content}\n```\n"
+                  
+                  # Add comprehensive audit criteria
+                  audit_prompt += self.get_audit_criteria()
+                  
+                  # Add output format
+                  audit_prompt += self.get_output_format()
+                  
+                  return audit_prompt
+
+              def get_audit_criteria(self):
+                  """Get audit criteria based on scope"""
+                  criteria = ""
+                  
+                  if self.audit_scope == 'all' or self.audit_scope == 'security':
+                      criteria += """
+
+          ## 🔐 SECURITY AUDIT CRITERIA
+          1. **Input Validation & Sanitization:**
+             - Unvalidated user inputs, missing sanitization, injection vulnerabilities
+          2. **Authentication & Authorization:**
+             - Weak auth patterns, missing checks, session handling
+          3. **Data Protection:**
+             - Sensitive data exposure, insecure storage, missing encryption
+          4. **Dependencies & Configuration:**
+             - Vulnerable dependencies, hardcoded secrets, insecure configs
+          """
+
+                  if self.audit_scope == 'all' or self.audit_scope == 'maintainability':
+                      criteria += """
+
+          ## 🛠️ MAINTAINABILITY AUDIT CRITERIA
+          1. **Code Complexity & Structure:**
+             - Complex functions, deep nesting, unclear logic, architectural issues
+          2. **Code Quality:**
+             - Naming conventions, documentation, typing, consistency
+          3. **Architecture:**
+             - Dependencies, coupling, abstractions, separation of concerns
+          4. **Duplication & Redundancy:**
+             - Duplicate code, similar patterns, redundant components
+          """
+
+                  if self.audit_scope == 'all' or self.audit_scope == 'performance':
+                      criteria += """
+
+          ## 🚀 PERFORMANCE AUDIT CRITERIA
+          1. **Rendering & UI Performance:**
+             - Re-renders, memoization opportunities, component optimization
+          2. **Data & API Efficiency:**
+             - API calls, caching, payload sizes, async operations
+          3. **Resource Management:**
+             - Memory leaks, cleanup, bundle sizes, asset optimization
+          4. **Algorithms & Data Structures:**
+             - Inefficient loops, poor data structures, redundant computations
+          """
+
+                  if self.audit_scope == 'all' or self.audit_scope == 'cleanup':
+                      criteria += """
+
+          ## 🧹 CLEANUP AUDIT CRITERIA
+          1. **Dead Code Elimination:**
+             - Unused functions/variables, unreachable code, commented code
+          2. **Dependency Management:**
+             - Unused packages, outdated deps, vulnerabilities, duplicates
+          3. **File & Asset Management:**
+             - Unused files, duplicate assets, legacy code, test artifacts
+          """
+                  
+                  return criteria
+
+              def get_output_format(self):
+                  """Get the structured output format"""
+                  format_template = f"""
+
+          ## AUDIT INSTRUCTIONS
+          Create a comprehensive, actionable audit report in the following format:
+
+          # 🔍 Claude AI Code Audit Report
+
+          **Project:** Software Application Audit
+          **Audit Date:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+          **Audit Scope:** {self.audit_scope.title()}
+          **Repository:** {self.target_repo_owner}/{self.target_repo_name}
+          **Files Analyzed:** {"{len(sampled_files)}"} sampled files
+
+          ## 📊 Executive Summary
+          [Brief overview of findings, overall code health score (1-10), and key recommendations]
+
+          ## 🔍 Detailed Findings
+
+          ### 🔐 Security Issues
+          [List security findings with severity: CRITICAL 🚨, HIGH 🔴, MEDIUM 🟡, LOW 🟢]
+
+          ### 🛠️ Maintainability Issues  
+          [Code quality, structure, and maintainability concerns]
+
+          ### 🚀 Performance Issues
+          [Performance bottlenecks and optimization opportunities]
+
+          ### 🧹 Cleanup Opportunities
+          [Dead code, unused dependencies, and cleanup tasks]
+
+          ## 📈 Code Quality Metrics
+          [File counts, complexity estimates, technical debt indicators]
+
+          ## ✅ Positive Findings
+          [Highlight well-implemented patterns and good practices]
+          """
+
+                  if self.include_suggestions:
+                      format_template += """
+
+          ## 💡 Improvement Recommendations
+
+          ### Priority 1 - Critical/High Impact
+          [Most important fixes with implementation steps]
+
+          ### Priority 2 - Medium Impact
+          [Important improvements for code quality]
+
+          ### Priority 3 - Low Impact/Nice-to-Have
+          [Optional improvements and optimizations]
+
+          ## 🛠️ Implementation Roadmap
+          [Step-by-step guide for addressing key issues]
+          """
+
+                  format_template += """
+
+          ## 📋 Action Items Checklist
+          - [ ] Review critical security issues
+          - [ ] Address high-priority performance problems
+          - [ ] Implement maintainability improvements
+          - [ ] Clean up dead code and unused dependencies
+          - [ ] Update documentation
+          - [ ] Schedule follow-up audit
+
+          ---
+          *Report generated by Claude AI Code Auditor 🤖*
+
+          **Instructions:** Provide specific examples with file names and line references. Be thorough but concise. Focus on actionable insights that will genuinely improve the codebase.
+          """
+                  
+                  return format_template
+
+              def generate_with_retry(self, prompt, max_retries=15):
+                  """Enhanced generation with better retry logic"""
+                  print("🤖 Sending audit request to Claude AI...")
+                  print(f"📝 Prompt length: {len(prompt):,} characters")
+                  print(f"🎯 Using model: {self.model_id}")
+                  print("=" * 80)
+                  
+                  for attempt in range(max_retries):
+                      try:
+                          print(f"🚀 Attempt {attempt + 1}/{max_retries}")
+                          
+                          body = {
+                              "anthropic_version": "bedrock-2023-05-31",
+                              "max_tokens": 20000,
+                              "temperature": 0.3,
+                              "messages": [
+                                  {
+                                      "role": "user",
+                                      "content": prompt
+                                  }
+                              ]
+                          }
+                          
+                          start_time = time.time()
+                          response = self.bedrock_client.invoke_model(
+                              body=json.dumps(body),
+                              modelId=self.model_id,
+                              accept='application/json',
+                              contentType='application/json'
+                          )
+                          
+                          response_body = json.loads(response.get('body').read())
+                          audit_report = response_body['content'][0]['text']
+                          
+                          generation_time = time.time() - start_time
+                          
+                          print(f"✅ Audit completed in {generation_time:.2f} seconds!")
+                          print(f"📊 Report length: {len(audit_report):,} characters")
+                          print("=" * 80)
+                          
+                          return audit_report
+                          
+                      except Exception as e:
+                          error_str = str(e)
+                          print(f"❌ Attempt {attempt + 1} failed: {error_str}")
+                          
+                          # Different retry delays based on error type
+                          if "throttling" in error_str.lower() or "rate" in error_str.lower():
+                              delay = min(30 + (attempt * 10), 120)  # Longer delay for rate limits
+                          else:
+                              delay = min(2 ** attempt + random.uniform(0, 1), 60)
+                          
+                          if attempt < max_retries - 1:
+                              print(f"⏳ Waiting {delay:.2f} seconds before retry...")
+                              time.sleep(delay)
+                          else:
+                              print("❌ All retry attempts exhausted")
+                              return None
+                  
+                  return None
+
+              def save_audit_report(self, audit_report):
+                  """Save audit report with timestamp"""
+                  print("💾 Saving audit report...")
+                  
+                  # Create audit directory
+                  audit_dir = '.github/claude-audits'
+                  os.makedirs(audit_dir, exist_ok=True)
+                  
+                  # Save with timestamp
+                  timestamp = datetime.now().strftime('%Y%m%d-%H%M%S')
+                  audit_file_path = f'{audit_dir}/audit-{timestamp}.md'
+                  
+                  with open(audit_file_path, 'w', encoding='utf-8') as f:
+                      f.write(audit_report)
+                  
+                  # Also save as latest
+                  latest_path = f'{audit_dir}/latest-audit.md'
+                  with open(latest_path, 'w', encoding='utf-8') as f:
+                      f.write(audit_report)
+                  
+                  print(f"✅ Audit report saved to {audit_file_path}")
+                  return audit_file_path, latest_path
+
+              def create_branch_and_commit(self, audit_file_path, latest_path):
+                  """Create branch and commit with robust error handling"""
+                  try:
+                      print(f"🌿 Creating branch: {self.audit_branch}")
+                      
+                      # Configure git
+                      subprocess.run(['git', 'config', 'user.name', 'Claude AI Auditor'], check=True)
+                      subprocess.run(['git', 'config', 'user.email', 'claude-auditor@github-actions.bot'], check=True)
+                      
+                      # Create and checkout new branch
+                      subprocess.run(['git', 'checkout', '-b', self.audit_branch], check=True)
+                      
+                      # Add the audit reports
+                      subprocess.run(['git', 'add', audit_file_path, latest_path], check=True)
+                      
+                      commit_msg = f"""🔍 Claude AI Code Audit Report
+
+          📋 Audit Details:
+          - Scope: {self.audit_scope}
+          - Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+          - Target: {self.target_repo_owner}/{self.target_repo_name}:{self.target_branch}
+          - Report: {audit_file_path}
+
+          🎯 Analysis Coverage:
+          🔐 Security vulnerabilities and best practices
+          🛠️ Code quality and maintainability 
+          🚀 Performance optimization opportunities
+          🧹 Dead code and cleanup recommendations
+
+          Generated by Claude AI Code Auditor 🤖
+          """
+                      
+                      subprocess.run(['git', 'commit', '-m', commit_msg], check=True)
+                      subprocess.run(['git', 'push', '-u', 'origin', self.audit_branch], check=True)
+                      
+                      print(f"✅ Successfully pushed to branch: {self.audit_branch}")
+                      return True
+                      
+                  except subprocess.CalledProcessError as e:
+                      print(f"❌ Git operation failed: {e}")
+                      return False
+
+              def create_pull_request(self, audit_file_path):
+                  """Create pull request with enhanced fork handling"""
+                  try:
+                      print("📝 Creating pull request...")
+                      
+                      github_client = Github(self.github_token)
+                      
+                      if self.is_fork:
+                          # For forks, create PR from fork to upstream
+                          source_repo = github_client.get_repo(f"{self.current_repo_owner}/{self.current_repo_name}")
+                          target_repo = github_client.get_repo(f"{self.target_repo_owner}/{self.target_repo_name}")
+                          head = f"{self.current_repo_owner}:{self.audit_branch}"
+                          base = self.target_branch
+                          repo_for_pr = target_repo
+                          print(f"🍴 Creating PR from fork {head} to {self.target_repo_owner}/{self.target_repo_name}:{base}")
+                      else:
+                          # For original repos, create PR within the same repo
+                          repo_for_pr = github_client.get_repo(f"{self.current_repo_owner}/{self.current_repo_name}")
+                          head = self.audit_branch
+                          base = self.target_branch
+                          print(f"📁 Creating PR within repo {head} to {base}")
+                      
+                      pr_title = f"🔍 Claude AI Code Audit Report - {datetime.now().strftime('%Y-%m-%d')}"
+                      pr_body = self.generate_pr_body(audit_file_path)
+                      
+                      try:
+                          pull_request = repo_for_pr.create_pull(
+                              title=pr_title,
+                              body=pr_body,
+                              head=head,
+                              base=base
+                          )
+                          
+                          # Add labels if possible
+                          try:
+                              available_labels = [label.name for label in repo_for_pr.get_labels()]
+                              labels_to_add = []
+                              
+                              for label in ['claude-audit', 'code-quality', 'automated', 'audit']:
+                                  if label in available_labels:
+                                      labels_to_add.append(label)
+                              
+                              if labels_to_add:
+                                  pull_request.add_to_labels(*labels_to_add)
+                                  
+                          except Exception as label_error:
+                              print(f"⚠️ Could not add labels: {label_error}")
+                          
+                          print(f"✅ Pull request created: {pull_request.html_url}")
+                          return pull_request.html_url
+                          
+                      except GithubException as pr_error:
+                          if pr_error.status == 422:
+                              print("⚠️ PR already exists or validation error. Trying to find existing PR...")
+                              return self.find_existing_pr(repo_for_pr)
+                          else:
+                              raise pr_error
+                              
+                  except Exception as e:
+                      print(f"❌ Failed to create pull request: {e}")
+                      return self.create_fallback_summary(audit_file_path)
+
+              def find_existing_pr(self, repo):
+                  """Find existing PR for the audit branch"""
+                  try:
+                      pulls = repo.get_pulls(state='open', head=f"{self.current_repo_owner}:{self.audit_branch}")
+                      for pr in pulls:
+                          print(f"✅ Found existing PR: {pr.html_url}")
+                          return pr.html_url
+                  except:
+                      pass
+                  return None
+
+              def generate_pr_body(self, audit_file_path):
+                  """Generate comprehensive PR body"""
+                  return f"""# 🔍 Claude AI Code Audit Report
+
+          This pull request contains a comprehensive code audit report generated by Claude AI.
+
+          ## 📋 Audit Details
+          - **Scope:** {self.audit_scope.title()}
+          - **Date:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+          - **Report Location:** `{audit_file_path}`
+          - **Target Repository:** {self.target_repo_owner}/{self.target_repo_name}
+          - **Target Branch:** {self.target_branch}
+          - **Repository Type:** {'Fork' if self.is_fork else 'Original'}
+          - **Suggestions Included:** {'Yes' if self.include_suggestions else 'No'}
+
+          ## 🎯 Audit Coverage
+
+          {'🔐 **Security Analysis** - Vulnerability detection and security best practices' if self.audit_scope in ['all', 'security'] else ''}
+          {'🛠️ **Maintainability Review** - Code quality and structural improvements' if self.audit_scope in ['all', 'maintainability'] else ''}
+          {'🚀 **Performance Optimization** - Performance bottlenecks and optimization opportunities' if self.audit_scope in ['all', 'performance'] else ''}
+          {'🧹 **Code Cleanup** - Dead code, unused dependencies, and cleanup recommendations' if self.audit_scope in ['all', 'cleanup'] else ''}
+
+          ## 📖 How to Use This Report
+
+          1. **📋 Review the findings** in the detailed audit report
+          2. **🎯 Prioritize issues** based on severity levels (Critical 🚨, High 🔴, Medium 🟡, Low 🟢)
+          3. **📝 Create issues** for specific problems that need fixing
+          4. **🔧 Implement suggestions** to improve code quality and security
+          5. **🔄 Schedule regular audits** to maintain code health
+
+          ## ⚠️ Important Notes
+
+          - **AI-Generated Content:** This audit was performed by AI and should be reviewed by human developers
+          - **Context Matters:** Some findings may be false positives - use your domain knowledge
+          - **Prioritize Wisely:** Not all issues need immediate fixing - focus on high-impact items
+          - **Incremental Improvement:** Consider implementing changes gradually to avoid disruption
+
+          ## 🔄 Next Steps
+
+          1. **📖 Review** the complete audit report in detail
+          2. **👥 Discuss** findings with your development team
+          3. **📋 Create** actionable tickets for priority issues
+          4. **📅 Plan** implementation of recommended improvements
+          5. **🔍 Monitor** progress and schedule follow-up audits
+
+          ## 🤖 Automation Details
+
+          - **Workflow:** Runs automatically every 6 hours
+          - **Model:** Claude 3.5 Sonnet via AWS Bedrock
+          - **Coverage:** Comprehensive analysis of codebase structure and patterns
+          - **Reliability:** Multiple retry mechanisms and error handling
+
+          ---
+          *🤖 Generated automatically by Claude AI Code Auditor*
+          *⚡ Powered by AWS Bedrock and GitHub Actions*
+          """
+
+              def create_fallback_summary(self, audit_file_path):
+                  """Create fallback summary when PR creation fails"""
+                  summary_content = f"""# 🔍 Claude AI Code Audit Summary
+
+          **✅ Audit Completed:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+          **🌿 Branch:** {self.audit_branch}
+          **📄 Report:** {audit_file_path}
+          **🎯 Scope:** {self.audit_scope.title()}
+          **🏗️ Repository:** {self.target_repo_owner}/{self.target_repo_name}
+
+          ## 📋 Manual Steps Required
+
+          1. **📖 View the audit report:** `{audit_file_path}`
+          2. **🔗 Create a Pull Request manually:**
+             - Go to [{self.target_repo_owner}/{self.target_repo_name}](https://github.com/{self.target_repo_owner}/{self.target_repo_name})
+             - Switch to the `{self.audit_branch}` branch
+             - Click "Compare & pull request"
+             - Target branch: `{self.target_branch}`
+          3. **📝 Review findings** and implement improvements
+
+          ## 🔗 Quick Links
+
+          - **🌿 Branch:** [{self.audit_branch}](https://github.com/{self.current_repo_owner}/{self.current_repo_name}/tree/{self.audit_branch})
+          - **📄 Report:** [{audit_file_path}](https://github.com/{self.current_repo_owner}/{self.current_repo_name}/blob/{self.audit_branch}/{audit_file_path})
+          - **🎯 Target Repo:** [{self.target_repo_owner}/{self.target_repo_name}](https://github.com/{self.target_repo_owner}/{self.target_repo_name})
+
+          ---
+          *🤖 Generated by Claude AI Code Auditor*
+          """
+                  
+                  summary_path = 'CLAUDE_AUDIT_SUMMARY.md'
+                  with open(summary_path, 'w', encoding='utf-8') as f:
+                      f.write(summary_content)
+                  
+                  try:
+                      subprocess.run(['git', 'add', summary_path], check=True)
+                      subprocess.run(['git', 'commit', '-m', 'Add audit summary'], check=True)
+                      subprocess.run(['git', 'push'], check=True)
+                      print(f"✅ Fallback summary created: {summary_path}")
+                  except:
+                      print(f"⚠️ Could not commit summary, but file created: {summary_path}")
+                  
+                  return summary_path
+
+              def run_audit(self):
+                  """Main audit execution with comprehensive error handling"""
+                  try:
+                      print("🔍 Starting Robust Claude AI Code Audit...")
+                      print(f"📋 Audit scope: {self.audit_scope}")
+                      print(f"💡 Include suggestions: {self.include_suggestions}")
+                      print("=" * 80)
+                      
+                      # Step 1: Analyze codebase
+                      codebase_context = self.analyze_codebase_structure()
+                      
+                      if not codebase_context['source_files']:
+                          print("⚠️ No source files found. Creating minimal report...")
+                          audit_report = self.create_minimal_report()
+                      else:
+                          # Step 2: Sample files
+                          sampled_files = self.sample_source_files(codebase_context['source_files'])
+                          
+                          # Step 3: Perform audit
+                          audit_report = self.perform_audit_with_claude(codebase_context, sampled_files)
+                          
+                          if not audit_report:
+                              print("❌ Failed to generate audit report")
+                              return False
+                      
+                      # Step 4: Save report
+                      audit_file_path, latest_path = self.save_audit_report(audit_report)
+                      
+                      # Step 5: Create branch and commit
+                      if self.create_branch_and_commit(audit_file_path, latest_path):
+                          # Step 6: Create PR
+                          pr_url = self.create_pull_request(audit_file_path)
+                          if pr_url:
+                              print(f"🎉 Audit completed successfully!")
+                              print(f"🔗 Pull Request: {pr_url}")
+                          else:
+                              print("⚠️ PR creation failed, but audit completed")
+                      else:
+                          print("❌ Failed to create branch and commit")
+                          return False
+                      
+                      return True
+                      
+                  except Exception as e:
+                      print(f"💥 Critical error in audit execution: {e}")
+                      import traceback
+                      traceback.print_exc()
+                      return False
+
+              def create_minimal_report(self):
+                  """Create minimal report when no source files found"""
+                  return f"""# 🔍 Claude AI Code Audit Report
+
+          **Project:** Repository Analysis
+          **Audit Date:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+          **Audit Scope:** {self.audit_scope.title()}
+          **Status:** No source files detected for analysis
+
+          ## 📊 Executive Summary
+
+          No source code files were detected in this repository for analysis. This could indicate:
+          - Empty or documentation-only repository
+          - Non-standard project structure
+          - Files excluded by analysis patterns
+
+          ## 🔍 Repository Structure
+
+          The repository appears to contain primarily:
+          - Documentation files (.md)
+          - Configuration files (.json, .yml, .yaml)
+          - Other non-source assets
+
+          ## 💡 Recommendations
+
+          1. **📁 Verify Repository Contents:** Ensure source code files are present
+          2. **🔧 Update Analysis Patterns:** May need to include additional file types
+          3. **📝 Add Documentation:** Consider adding README with project information
+
+          ---
+          *Report generated by Claude AI Code Auditor 🤖*
+          """
+
+          if __name__ == "__main__":
+              auditor = RobustClaudeCodeAuditor()
+              success = auditor.run_audit()
+              sys.exit(0 if success else 1)
+          EOF
+
+          echo "🚀 Starting Claude AI Code Audit..."
+          python3 claude_auditor.py
           import random
           from datetime import datetime
           from botocore.config import Config
@@ -799,22 +1762,56 @@ jobs:
               exit(0 if success else 1)
           EOF
 
-          python claude_auditor.py
+          echo "🚀 Starting Claude AI Code Audit..."
+          python3 claude_auditor.py
 
-      - name: Summary
+      - name: Cleanup on failure
+        if: failure()
+        continue-on-error: true
+        run: |
+          echo "🧹 Cleaning up after failure..."
+
+          # Clean up any created branch on failure
+          AUDIT_BRANCH="${{ steps.repo-info.outputs.audit_branch }}"
+          if [[ -n "$AUDIT_BRANCH" ]]; then
+            git push origin --delete "$AUDIT_BRANCH" 2>/dev/null || echo "No branch to clean up"
+          fi
+
+      - name: Enhanced Summary
         if: always()
         run: |
-          echo "📋 Claude AI Code Audit Workflow Summary"
-          echo "======================================="
-          echo "Audit Scope: ${{ github.event.inputs.audit_scope }}"
-          echo "Include Suggestions: ${{ github.event.inputs.include_suggestions }}"
-          echo "Branch: claude-code-audit"
-          echo "Report Location: .github/claude/audit.md"
+          echo "📋 Robust Claude AI Code Audit Workflow - Summary"
+          echo "================================================="
           echo ""
-          echo "🔍 The audit analyzed your codebase for:"
-          echo "  🔐 Security vulnerabilities and unsafe patterns"
-          echo "  🛠️ Maintainability and code quality issues"
+          echo "🔧 Configuration:"
+          echo "  📋 Audit Scope: ${{ env.AUDIT_SCOPE }}"
+          echo "  💡 Include Suggestions: ${{ env.INCLUDE_SUGGESTIONS }}"
+          echo "  🏗️ Repository Type: ${{ steps.repo-info.outputs.is_fork == 'true' && 'Fork' || 'Original' }}"
+          echo "  🎯 Target Repo: ${{ steps.repo-info.outputs.target_repo_owner }}/${{ steps.repo-info.outputs.target_repo_name }}"
+          echo "  🌿 Target Branch: ${{ steps.repo-info.outputs.target_branch }}"
+          echo "  🔍 Audit Branch: ${{ steps.repo-info.outputs.audit_branch }}"
+          echo ""
+          echo "🔍 Analysis Coverage:"
+          echo "  🔐 Security vulnerabilities and best practices"
+          echo "  🛠️ Code quality and maintainability issues"
           echo "  🚀 Performance optimization opportunities"
           echo "  🧹 Dead code and cleanup recommendations"
           echo ""
-          echo "📖 Check the pull request for detailed findings and recommendations!"
+          echo "⚡ Enhanced Features:"
+          echo "  🔄 Automatic scheduling every 6 hours"
+          echo "  🍴 Smart fork detection and upstream PR creation"
+          echo "  💪 Robust error handling and retry mechanisms"
+          echo "  🧹 Automatic cleanup of old audit branches"
+          echo "  📊 Comprehensive file analysis and prioritization"
+          echo "  🎯 Intelligent target branch detection"
+          echo ""
+          echo "📖 Check the pull request for detailed findings and actionable recommendations!"
+          echo "🔗 Reports are saved in .github/claude-audits/ directory"
+          echo ""
+
+          # Show job status
+          if [[ "${{ job.status }}" == "success" ]]; then
+            echo "✅ Workflow completed successfully!"
+          else
+            echo "⚠️ Workflow completed with issues. Check logs above for details."
+          fi
