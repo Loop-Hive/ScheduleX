@@ -153,12 +153,73 @@ jobs:
           }
           echo "✅ AWS credentials verified"
 
-      - name: Setup Node.js with robust caching
+      - name: Setup Node.js with flexible caching
+        id: setup-node
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "npm"
-          cache-dependency-path: "**/package-lock.json"
+          # Don't specify cache here - we'll handle it manually to avoid errors
+
+      - name: Detect package manager and setup caching
+        id: package-manager
+        run: |
+          echo "🔍 Detecting package manager and dependency files..."
+
+          # Detect package manager
+          if [[ -f "yarn.lock" ]]; then
+            PACKAGE_MANAGER="yarn"
+            LOCK_FILE="yarn.lock"
+            echo "📦 Detected: Yarn"
+          elif [[ -f "pnpm-lock.yaml" ]]; then
+            PACKAGE_MANAGER="pnpm"
+            LOCK_FILE="pnpm-lock.yaml"
+            echo "📦 Detected: PNPM"
+          elif [[ -f "package-lock.json" ]]; then
+            PACKAGE_MANAGER="npm"
+            LOCK_FILE="package-lock.json"
+            echo "📦 Detected: NPM"
+          elif [[ -f "package.json" ]]; then
+            PACKAGE_MANAGER="npm"
+            LOCK_FILE=""
+            echo "📦 Detected: NPM (no lock file)"
+          else
+            PACKAGE_MANAGER="none"
+            LOCK_FILE=""
+            echo "📦 No package.json found - skipping Node.js dependency management"
+          fi
+
+          echo "package_manager=$PACKAGE_MANAGER" >> $GITHUB_OUTPUT
+          echo "lock_file=$LOCK_FILE" >> $GITHUB_OUTPUT
+
+          # Setup manual caching if dependencies exist
+          if [[ "$PACKAGE_MANAGER" != "none" ]]; then
+            echo "🔧 Setting up manual dependency caching..."
+            
+            # Create cache key
+            if [[ -n "$LOCK_FILE" && -f "$LOCK_FILE" ]]; then
+              CACHE_KEY="node-deps-${{ runner.os }}-$PACKAGE_MANAGER-$(shasum -a 256 $LOCK_FILE | cut -d' ' -f1)"
+            else
+              CACHE_KEY="node-deps-${{ runner.os }}-$PACKAGE_MANAGER-$(shasum -a 256 package.json | cut -d' ' -f1)"
+            fi
+            
+            echo "cache_key=$CACHE_KEY" >> $GITHUB_OUTPUT
+            echo "✅ Cache key: $CACHE_KEY"
+          fi
+
+      - name: Cache Node.js dependencies
+        if: steps.package-manager.outputs.package_manager != 'none'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.npm
+            ~/.yarn
+            ~/.cache/yarn
+            ~/.pnpm
+            node_modules
+            */node_modules
+          key: ${{ steps.package-manager.outputs.cache_key }}
+          restore-keys: |
+            node-deps-${{ runner.os }}-${{ steps.package-manager.outputs.package_manager }}-
 
       - name: Setup Python with robust caching
         uses: actions/setup-python@v5
@@ -213,34 +274,123 @@ jobs:
           }
 
       - name: Install Node.js dependencies
+        if: steps.package-manager.outputs.package_manager != 'none'
         continue-on-error: false
         run: |
           echo "📦 Installing Node.js dependencies..."
 
-          # Check if package.json exists
-          if [[ -f "package.json" ]]; then
-            # Clean install with retry logic
-            for i in {1..3}; do
-              if npm ci --silent --no-audit --no-fund; then
-                echo "✅ npm dependencies installed successfully"
-                break
-              else
-                echo "⚠️ npm install attempt $i failed, cleaning and retrying..."
-                rm -rf node_modules package-lock.json
-                sleep 5
-                if [[ $i -eq 3 ]]; then
-                  echo "❌ npm install failed after 3 attempts"
-                  # Try with npm install as fallback
-                  npm install --silent --no-audit --no-fund || {
-                    echo "❌ npm install fallback also failed"
-                    echo "Continuing without Node.js dependencies..."
-                  }
-                fi
+          PACKAGE_MANAGER="${{ steps.package-manager.outputs.package_manager }}"
+          LOCK_FILE="${{ steps.package-manager.outputs.lock_file }}"
+
+          echo "Using package manager: $PACKAGE_MANAGER"
+
+          # Install dependencies based on detected package manager
+          case "$PACKAGE_MANAGER" in
+            "yarn")
+              echo "🧶 Installing with Yarn..."
+              # Install yarn if not present
+              if ! command -v yarn &> /dev/null; then
+                npm install -g yarn
               fi
-            done
+              
+              for i in {1..3}; do
+                if yarn install --frozen-lockfile --silent; then
+                  echo "✅ Yarn dependencies installed successfully"
+                  break
+                else
+                  echo "⚠️ Yarn install attempt $i failed, retrying..."
+                  rm -rf node_modules yarn.lock.tmp
+                  sleep 5
+                  if [[ $i -eq 3 ]]; then
+                    echo "❌ Yarn install failed, trying fallback..."
+                    yarn install --silent || echo "Continuing without dependencies..."
+                  fi
+                fi
+              done
+              ;;
+              
+            "pnpm")
+              echo "📦 Installing with PNPM..."
+              # Install pnpm if not present
+              if ! command -v pnpm &> /dev/null; then
+                npm install -g pnpm
+              fi
+              
+              for i in {1..3}; do
+                if pnpm install --frozen-lockfile; then
+                  echo "✅ PNPM dependencies installed successfully"
+                  break
+                else
+                  echo "⚠️ PNPM install attempt $i failed, retrying..."
+                  rm -rf node_modules
+                  sleep 5
+                  if [[ $i -eq 3 ]]; then
+                    echo "❌ PNPM install failed, trying fallback..."
+                    pnpm install || echo "Continuing without dependencies..."
+                  fi
+                fi
+              done
+              ;;
+              
+            "npm")
+              echo "📦 Installing with NPM..."
+              
+              # Choose install strategy based on lock file existence
+              if [[ -n "$LOCK_FILE" && -f "$LOCK_FILE" ]]; then
+                # Use npm ci for clean install with lock file
+                for i in {1..3}; do
+                  if npm ci --silent --no-audit --no-fund; then
+                    echo "✅ NPM dependencies installed successfully (clean install)"
+                    break
+                  else
+                    echo "⚠️ NPM ci attempt $i failed, cleaning and retrying..."
+                    rm -rf node_modules
+                    sleep 5
+                    if [[ $i -eq 3 ]]; then
+                      echo "❌ NPM ci failed, trying npm install..."
+                      npm install --silent --no-audit --no-fund || {
+                        echo "❌ NPM install fallback also failed"
+                        echo "Continuing without Node.js dependencies..."
+                      }
+                    fi
+                  fi
+                done
+              else
+                # Use npm install when no lock file exists
+                for i in {1..3}; do
+                  if npm install --silent --no-audit --no-fund; then
+                    echo "✅ NPM dependencies installed successfully"
+                    break
+                  else
+                    echo "⚠️ NPM install attempt $i failed, retrying..."
+                    rm -rf node_modules
+                    sleep 5
+                    if [[ $i -eq 3 ]]; then
+                      echo "❌ NPM install failed after 3 attempts"
+                      echo "Continuing without Node.js dependencies..."
+                    fi
+                  fi
+                done
+              fi
+              ;;
+              
+            *)
+              echo "❌ Unknown package manager: $PACKAGE_MANAGER"
+              echo "Continuing without Node.js dependencies..."
+              ;;
+          esac
+
+          # Verify installation
+          if [[ -d "node_modules" ]]; then
+            echo "✅ Node.js dependencies verification passed"
           else
-            echo "📄 No package.json found, skipping Node.js dependencies"
+            echo "⚠️ No node_modules directory found, but continuing..."
           fi
+
+      - name: Skip Node.js dependencies
+        if: steps.package-manager.outputs.package_manager == 'none'
+        run: |
+          echo "📄 No package.json found, skipping Node.js dependencies installation"
 
       - name: Install Python dependencies
         continue-on-error: false
@@ -276,27 +426,77 @@ jobs:
         run: |
           echo "🔍 Analyzing codebase structure..."
 
-          # Find all relevant source files
+          # Find all relevant source files including React Native specific files
           find . -type f \( \
             -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name "*.jsx" -o \
-            -name "*.css" -o -name "*.scss" -o -name "*.json" -o -name "*.md" \
+            -name "*.css" -o -name "*.scss" -o -name "*.sass" -o -name "*.less" -o \
+            -name "*.json" -o -name "*.md" -o -name "*.yml" -o -name "*.yaml" -o \
+            -name "*.swift" -o -name "*.java" -o -name "*.kt" -o -name "*.m" -o \
+            -name "*.h" -o -name "*.py" -o -name "*.rb" -o -name "*.gradle" -o \
+            -name "*.xml" -o -name "*.plist" -o -name "*.podspec" \
           \) \
             -not -path "./node_modules/*" \
             -not -path "./.git/*" \
             -not -path "./dist/*" \
-            -not -path "./build/*" > codebase_files.txt
+            -not -path "./build/*" \
+            -not -path "./android/build/*" \
+            -not -path "./ios/build/*" \
+            -not -path "./android/.gradle/*" \
+            -not -path "./.expo/*" \
+            -not -path "./coverage/*" \
+            -not -path "./.nyc_output/*" > codebase_files.txt
 
           echo "📁 Found $(wc -l < codebase_files.txt) files to analyze"
+
+          # Detect project type
+          PROJECT_TYPE="unknown"
+          if [[ -f "package.json" ]]; then
+            if grep -q "react-native" package.json; then
+              PROJECT_TYPE="react-native"
+            elif grep -q "@expo" package.json; then
+              PROJECT_TYPE="expo"
+            elif grep -q "react" package.json; then
+              PROJECT_TYPE="react"
+            elif grep -q "next" package.json; then
+              PROJECT_TYPE="nextjs"
+            elif grep -q "vue" package.json; then
+              PROJECT_TYPE="vue"
+            else
+              PROJECT_TYPE="nodejs"
+            fi
+          elif [[ -f "pubspec.yaml" ]]; then
+            PROJECT_TYPE="flutter"
+          elif [[ -f "requirements.txt" ]] || [[ -f "pyproject.toml" ]]; then
+            PROJECT_TYPE="python"
+          fi
+
+          echo "📱 Detected project type: $PROJECT_TYPE"
 
           # Create project structure context
           echo "Project structure analysis:" > project_structure.txt
           echo "=========================" >> project_structure.txt
-          tree -I 'node_modules|.git|dist|build' -L 4 >> project_structure.txt 2>/dev/null || find . -type d -not -path "./node_modules*" -not -path "./.git*" >> project_structure.txt
+          echo "Project Type: $PROJECT_TYPE" >> project_structure.txt
+          echo "" >> project_structure.txt
 
-          # Analyze dependencies
+          # Use tree with React Native specific exclusions
+          tree -I 'node_modules|.git|dist|build|android/build|ios/build|.expo|coverage|.nyc_output|.gradle' -L 4 >> project_structure.txt 2>/dev/null || {
+            echo "Tree not available, using find instead:" >> project_structure.txt
+            find . -type d \
+              -not -path "./node_modules*" \
+              -not -path "./.git*" \
+              -not -path "./android/build*" \
+              -not -path "./ios/build*" \
+              -not -path "./.expo*" \
+              | head -50 >> project_structure.txt
+          }
+
+          # Analyze dependencies with React Native awareness
           echo "Dependencies analysis:" > dependencies_analysis.txt
           echo "=====================" >> dependencies_analysis.txt
-          if [ -f "package.json" ]; then
+          echo "Project Type: $PROJECT_TYPE" >> dependencies_analysis.txt
+          echo "" >> dependencies_analysis.txt
+
+          if [[ -f "package.json" ]]; then
             echo "Package.json dependencies:" >> dependencies_analysis.txt
             jq '.dependencies // {}' package.json >> dependencies_analysis.txt
             echo "" >> dependencies_analysis.txt
