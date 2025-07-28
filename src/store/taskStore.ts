@@ -20,6 +20,9 @@ export interface Task {
     description?: string;
     image?: string;
   };
+  // New properties for overlay functionality
+  starred?: boolean;
+  pinned?: boolean;
 }
 
 export interface TaskList {
@@ -47,6 +50,11 @@ interface TaskStoreState {
   updateTask: (listId: number, taskId: number, updates: Partial<Task>) => void;
   addImageTask: (listId: number, imageUri: string, title?: string) => void;
   addUrlTask: (listId: number, url: string, urlData?: any) => void;
+  // New methods for overlay functionality
+  starTask: (listId: number, taskId: number) => void;
+  pinTask: (listId: number, taskId: number) => void;
+  forwardTask: (fromListId: number, toListId: number, taskId: number) => void;
+  replyToTask: (listId: number, taskId: number, replyText: string) => void;
 }
 
 export const useTaskStore = create<TaskStoreState>()(
@@ -322,6 +330,101 @@ export const useTaskStore = create<TaskStoreState>()(
                       }),
                       type: 'url',
                       urlData: {url, ...urlData},
+                    },
+                  ],
+                }
+              : list,
+          ),
+        })),
+
+      // New methods for overlay functionality
+      starTask: (listId, taskId) =>
+        set(state => ({
+          taskLists: state.taskLists.map(list =>
+            list.id === listId
+              ? {
+                  ...list,
+                  tasks: list.tasks.map(task =>
+                    task.id === taskId ? {...task, starred: !task.starred} : task,
+                  ),
+                  completedTasks: list.completedTasks.map(task =>
+                    task.id === taskId ? {...task, starred: !task.starred} : task,
+                  ),
+                }
+              : list,
+          ),
+        })),
+
+      pinTask: (listId, taskId) =>
+        set(state => ({
+          taskLists: state.taskLists.map(list =>
+            list.id === listId
+              ? {
+                  ...list,
+                  tasks: list.tasks.map(task =>
+                    task.id === taskId ? {...task, pinned: !task.pinned} : task,
+                  ),
+                  completedTasks: list.completedTasks.map(task =>
+                    task.id === taskId ? {...task, pinned: !task.pinned} : task,
+                  ),
+                }
+              : list,
+          ),
+        })),
+
+      forwardTask: (fromListId, toListId, taskId) =>
+        set(state => {
+          const fromList = state.taskLists.find(list => list.id === fromListId);
+          if (!fromList) return state;
+
+          const task = fromList.tasks.find(t => t.id === taskId) || 
+                      fromList.completedTasks.find(t => t.id === taskId);
+          if (!task) return state;
+
+          const newTask = {
+            ...task,
+            id: Date.now(),
+            timestamp: new Date().toLocaleTimeString('en-US', {
+              hour: 'numeric',
+              minute: '2-digit', 
+              hour12: true,
+            }),
+          };
+
+          return {
+            taskLists: state.taskLists.map(list =>
+              list.id === toListId
+                ? {
+                    ...list,
+                    tasks: [...list.tasks, newTask],
+                  }
+                : list,
+            ),
+          };
+        }),
+
+      replyToTask: (listId, taskId, replyText) =>
+        set(state => ({
+          taskLists: state.taskLists.map(list =>
+            list.id === listId
+              ? {
+                  ...list,
+                  tasks: [
+                    ...list.tasks,
+                    {
+                      id: Date.now(),
+                      title: `Reply: ${replyText}`,
+                      description: `In reply to task #${taskId}`,
+                      completed: false,
+                      priority: 'medium',
+                      dueDate: new Date().toISOString().split('T')[0],
+                      category: 'Reply',
+                      timestamp: new Date().toLocaleTimeString('en-US', {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true,
+                      }),
+                      type: 'message',
                     },
                   ],
                 }

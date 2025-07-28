@@ -12,10 +12,15 @@ import {
   Alert,
   ScrollView,
   Modal,
-  Linking,
-  Image,
+  BackHandler,
+  Clipboard,
+  ToastAndroid,
+  ImageBackground,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import {useTaskStore, Task, TaskList} from '../../store/taskStore';
+import MessageBox from './components/message-box';
+import MessageOverlay from './components/MessageOverlay';
 
 interface TasksScreenProps {
   toggleSidebar?: () => void;
@@ -38,6 +43,11 @@ const TasksScreen: React.FC<TasksScreenProps> = ({}: any) => {
     clearAllCompletedTasks,
     addImageTask,
     addUrlTask,
+    updateTask,
+    starTask,
+    pinTask,
+    forwardTask,
+    replyToTask,
   } = useTaskStore();
 
   const [inputText, setInputText] = useState('');
@@ -53,6 +63,13 @@ const TasksScreen: React.FC<TasksScreenProps> = ({}: any) => {
   const [showCreateListModal, setShowCreateListModal] = useState(false);
   const [createListText, setCreateListText] = useState('');
   const flatListRef = useRef<FlatList>(null);
+
+  // Multi-selection state
+  const [selectedTaskIds, setSelectedTaskIds] = useState<number[]>([]);
+  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
+  const [showOverlay, setShowOverlay] = useState(false);
+  const [overlayReplyText, setOverlayReplyText] = useState('');
+  const [overlayEditText, setOverlayEditText] = useState('');
 
   const activeList =
     taskLists.find(list => list.id === activeListId) || taskLists[0];
@@ -100,6 +117,27 @@ const TasksScreen: React.FC<TasksScreenProps> = ({}: any) => {
   };
 
   const handleTaskPress = (taskId: number) => {
+    if (isMultiSelectMode) {
+      // In multi-select mode, toggle selection
+      if (selectedTaskIds.includes(taskId)) {
+        const newSelection = selectedTaskIds.filter(id => id !== taskId);
+        setSelectedTaskIds(newSelection);
+        // Exit multi-select mode if no tasks are selected
+        if (newSelection.length === 0) {
+          setIsMultiSelectMode(false);
+        } else {
+          // Show overlay when there are selected tasks
+          setShowOverlay(true);
+        }
+      } else {
+        const newSelection = [...selectedTaskIds, taskId];
+        setSelectedTaskIds(newSelection);
+        // Show overlay when there are selected tasks
+        setShowOverlay(true);
+      }
+      return;
+    }
+
     if (showCompletedTasks) {
       // For completed tasks, just show details or do nothing
       return;
@@ -109,14 +147,54 @@ const TasksScreen: React.FC<TasksScreenProps> = ({}: any) => {
   };
 
   const handleTaskLongPress = (taskId: number) => {
-    const taskList = showCompletedTasks ? completedTasks : tasks;
-    const task = taskList.find((t: Task) => t.id === taskId);
+    if (!isMultiSelectMode) {
+      // Enter multi-select mode and select this task
+      setIsMultiSelectMode(true);
+      setSelectedTaskIds([taskId]);
+      // Show overlay immediately
+      setShowOverlay(true);
+    }
+  };
 
-    if (!task) return;
+  // Overlay handlers
+  const handleOverlayClose = () => {
+    setShowOverlay(false);
+    setSelectedTaskIds([]);
+    setIsMultiSelectMode(false);
+    setOverlayReplyText('');
+    setOverlayEditText('');
+  };
+
+  const handleOverlayReply = (text: string) => {
+    if (selectedTaskIds.length > 0 && text.trim()) {
+      // For multi-select, reply to all selected tasks
+      selectedTaskIds.forEach(taskId => {
+        replyToTask(activeListId, taskId, text);
+      });
+    }
+  };
+
+  const handleOverlayStar = () => {
+    selectedTaskIds.forEach(taskId => {
+      starTask(activeListId, taskId);
+    });
+  };
+
+  const handleOverlayDelete = () => {
+    if (selectedTaskIds.length === 0) return;
+
+    const taskList = showCompletedTasks ? completedTasks : tasks;
+    const selectedTasks = taskList.filter((t: Task) => selectedTaskIds.includes(t.id));
+
+    if (selectedTasks.length === 0) return;
+
+    const message = selectedTaskIds.length === 1 
+      ? `Are you sure you want to delete "${selectedTasks[0].title}"?`
+      : `Are you sure you want to delete ${selectedTaskIds.length} selected tasks?`;
 
     Alert.alert(
-      'Delete Task',
-      `Are you sure you want to delete "${task.title}"?`,
+      'Delete Task(s)',
+      message,
       [
         {
           text: 'Cancel',
@@ -126,17 +204,82 @@ const TasksScreen: React.FC<TasksScreenProps> = ({}: any) => {
           text: 'Delete',
           style: 'destructive',
           onPress: () => {
-            if (showCompletedTasks) {
-              deleteCompletedTask(activeListId, taskId);
-            } else {
-              deleteTask(activeListId, taskId);
-            }
+            selectedTaskIds.forEach(taskId => {
+              if (showCompletedTasks) {
+                deleteCompletedTask(activeListId, taskId);
+              } else {
+                deleteTask(activeListId, taskId);
+              }
+            });
+            handleOverlayClose();
           },
         },
       ],
     );
   };
 
+  const handleOverlayForward = (toListId: number) => {
+    selectedTaskIds.forEach(taskId => {
+      forwardTask(activeListId, toListId, taskId);
+    });
+  };
+
+  const handleOverlayCopy = () => {
+    if (selectedTaskIds.length > 0) {
+      const taskList = showCompletedTasks ? completedTasks : tasks;
+      const selectedTasks = taskList.filter((t: Task) => selectedTaskIds.includes(t.id));
+      
+      if (selectedTasks.length > 0) {
+        const textToCopy = selectedTasks.map(task => 
+          `${task.title}${task.description ? '\n' + task.description : ''}`
+        ).join('\n\n');
+        
+        Clipboard.setString(textToCopy);
+        
+        if (Platform.OS === 'android') {
+          ToastAndroid.show('Copied to Clipboard', ToastAndroid.SHORT);
+        } else {
+          Alert.alert('Success', 'Copied to Clipboard');
+        }
+      }
+    }
+  };
+
+  const handleOverlayEdit = (text: string) => {
+    if (selectedTaskIds.length === 1 && text.trim()) {
+      // Only allow editing when a single task is selected
+      updateTask(activeListId, selectedTaskIds[0], { title: text });
+    }
+  };
+
+  const handleOverlayPin = () => {
+    selectedTaskIds.forEach(taskId => {
+      pinTask(activeListId, taskId);
+    });
+  };
+
+  const handleOverlayMarkCompleted = () => {
+    selectedTaskIds.forEach(taskId => {
+      toggleTaskCompletion(activeListId, taskId);
+    });
+  };
+
+  // Get selected task data for overlay (for single selection)
+  const getSelectedTask = () => {
+    if (selectedTaskIds.length !== 1) return null;
+    const taskList = showCompletedTasks ? completedTasks : tasks;
+    return taskList.find((t: Task) => t.id === selectedTaskIds[0]) || null;
+  };
+
+  const selectedTask = getSelectedTask();
+
+  // Function to clear all selections and exit multi-select mode
+  const clearSelection = () => {
+    setIsMultiSelectMode(false);
+    setSelectedTaskIds([]);
+  };
+
+  // Missing handler functions
   const handleClearAll = () => {
     const actionText = showCompletedTasks ? 'completed tasks' : 'all tasks';
 
@@ -161,6 +304,53 @@ const TasksScreen: React.FC<TasksScreenProps> = ({}: any) => {
         },
       ],
     );
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'high':
+        return '#EF4444';
+      case 'medium':
+        return '#F59E0B';
+      case 'low':
+        return '#10B981';
+      default:
+        return '#6B7280';
+    }
+  };
+
+  const handleInputSubmit = () => {
+    if (inputText.trim()) {
+      const urls = detectUrls(inputText);
+
+      if (urls.length > 0) {
+        // If URLs are detected, create URL tasks
+        urls.forEach(url => {
+          const urlData = {
+            url,
+            title: url,
+          };
+          addUrlTask(activeListId, url, urlData);
+        });
+
+        // Also add the text as a regular task if there's text beyond URLs
+        const textWithoutUrls = inputText
+          .replace(/(https?:\/\/[^\s]+)/g, '')
+          .trim();
+        if (textWithoutUrls) {
+          addNewTask();
+        } else {
+          setInputText('');
+        }
+      } else {
+        addNewTask();
+      }
+    }
+  };
+
+  const detectUrls = (text: string) => {
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    return text.match(urlRegex) || [];
   };
 
   const handleAddUrl = () => {
@@ -193,7 +383,6 @@ const TasksScreen: React.FC<TasksScreenProps> = ({}: any) => {
   };
 
   const handleAddImage = () => {
-    // For now, we'll just add a placeholder image functionality
     Alert.alert(
       'Add Image',
       'Image picker functionality would be implemented here',
@@ -201,7 +390,6 @@ const TasksScreen: React.FC<TasksScreenProps> = ({}: any) => {
         {
           text: 'OK',
           onPress: () => {
-            // Placeholder: In a real app, you'd use react-native-image-picker here
             const placeholderImageUri =
               'https://via.placeholder.com/300x200.png?text=Sample+Image';
             addImageTask(activeListId, placeholderImageUri, 'Sample Image');
@@ -210,40 +398,6 @@ const TasksScreen: React.FC<TasksScreenProps> = ({}: any) => {
       ],
     );
     setShowAttachmentMenu(false);
-  };
-
-  const detectUrls = (text: string) => {
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
-    return text.match(urlRegex) || [];
-  };
-
-  const handleInputSubmit = () => {
-    if (inputText.trim()) {
-      const urls = detectUrls(inputText);
-
-      if (urls.length > 0) {
-        // If URLs are detected, create URL tasks
-        urls.forEach(url => {
-          const urlData = {
-            url,
-            title: url,
-          };
-          addUrlTask(activeListId, url, urlData);
-        });
-
-        // Also add the text as a regular task if there's text beyond URLs
-        const textWithoutUrls = inputText
-          .replace(/(https?:\/\/[^\s]+)/g, '')
-          .trim();
-        if (textWithoutUrls) {
-          addNewTask();
-        } else {
-          setInputText('');
-        }
-      } else {
-        addNewTask();
-      }
-    }
   };
 
   const handleCreateNewList = () => {
@@ -275,7 +429,6 @@ const TasksScreen: React.FC<TasksScreenProps> = ({}: any) => {
   };
 
   const handleListLongPress = (listId: number) => {
-    // Don't allow operations on default list (List 1)
     if (listId === 1) {
       Alert.alert(
         'Protected List',
@@ -363,88 +516,41 @@ const TasksScreen: React.FC<TasksScreenProps> = ({}: any) => {
     setSelectedListForMenu(null);
   };
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'high':
-        return '#EF4444';
-      case 'medium':
-        return '#F59E0B';
-      case 'low':
-        return '#10B981';
-      default:
-        return '#6B7280';
-    }
-  };
+  const activeListName = taskLists.find(list => list.id === activeListId)?.name;
 
   const renderTaskMessage = ({item}: {item: Task}) => (
-    <View style={styles.messageContainer}>
-      <TouchableOpacity
-        style={[
-          styles.messageBubble,
-          item.completed && styles.completedMessageBubble,
-        ]}
-        onPress={() => handleTaskPress(item.id)}
-        onLongPress={() => handleTaskLongPress(item.id)}>
-        {/* Header with checkbox and title */}
-        <View style={styles.messageHeader}>
-          <View style={[styles.checkbox, item.completed && styles.checkedBox]}>
-            {item.completed && <Text style={styles.checkmark}>✓</Text>}
-          </View>
-          <Text
-            style={[
-              styles.messageTitle,
-              item.completed && styles.completedText,
-            ]}>
-            {item.title}
-          </Text>
-        </View>
-
-        {/* Image content */}
-        {item.type === 'image' && item.imageUri && (
-          <Image source={{uri: item.imageUri}} style={styles.messageImage} />
-        )}
-
-        {/* URL content */}
-        {item.type === 'url' && item.urlData && (
-          <TouchableOpacity
-            style={styles.urlContainer}
-            onPress={() => Linking.openURL(item.urlData!.url)}>
-            <Text style={styles.urlTitle}>{item.urlData.title || 'Link'}</Text>
-            <Text style={styles.urlText} numberOfLines={1}>
-              {item.urlData.url}
-            </Text>
-          </TouchableOpacity>
-        )}
-
-        {/* Description */}
-        {item.description ? (
-          <Text style={styles.messageDescription}>{item.description}</Text>
-        ) : null}
-
-        {/* Footer with priority and time */}
-        <View style={styles.messageFooter}>
-          <View
-            style={[
-              styles.priorityDot,
-              {backgroundColor: getPriorityColor(item.priority)},
-            ]}
-          />
-          <Text style={styles.messageTime}>
-            {showCompletedTasks && item.completedAt
-              ? `Completed: ${item.completedAt}`
-              : item.timestamp}
-          </Text>
-        </View>
-      </TouchableOpacity>
-    </View>
+    <MessageBox
+      id={item.id}
+      title={item.title}
+      imageUri={item.imageUri}
+      type={item.type}
+      urlData={item.urlData}
+      description={item.description}
+      completed={item.completed}
+      completedAt={item.completedAt}
+      timestamp={item.timestamp}
+      handleTaskPress={handleTaskPress}
+      handleTaskLongPress={handleTaskLongPress}
+      priority={item.priority}
+      getPriorityColor={getPriorityColor}
+      showCompletedTasks={showCompletedTasks}
+      starred={item.starred}
+      pinned={item.pinned}
+      isSelected={selectedTaskIds.includes(item.id)}
+      isMultiSelectMode={isMultiSelectMode}
+    />
   );
 
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      {/* Chat Header */}
-      <View style={styles.chatHeader}>
+      <ImageBackground
+        source={require('../../assets/icons/tasks-chat/chat-background.jpeg')}
+        style={styles.backgroundImage}
+        imageStyle={styles.backgroundImageStyle}>
+        {/* Chat Header */}
+        <View style={styles.chatHeader}>
         <TouchableOpacity onPress={() => navigation.navigate('Tabs' as never)}>
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
@@ -467,7 +573,7 @@ const TasksScreen: React.FC<TasksScreenProps> = ({}: any) => {
             style={styles.headerButton}
             onPress={() => setShowCompletedTasks(!showCompletedTasks)}>
             <Text style={styles.headerButtonText}>
-              {showCompletedTasks ? '📝' : '✅'}
+              {showCompletedTasks ? '📋' : '✅'}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -511,6 +617,8 @@ const TasksScreen: React.FC<TasksScreenProps> = ({}: any) => {
               )}
             </TouchableOpacity>
           ))}
+          
+          {/* Add new list button */}
           <TouchableOpacity
             style={styles.addListButton}
             onPress={handleCreateNewList}>
@@ -518,16 +626,25 @@ const TasksScreen: React.FC<TasksScreenProps> = ({}: any) => {
           </TouchableOpacity>
         </ScrollView>
       </View>
-
+      
       {/* Messages List */}
-      <FlatList
-        ref={flatListRef}
-        data={showCompletedTasks ? completedTasks : tasks}
-        renderItem={renderTaskMessage}
-        keyExtractor={item => item.id.toString()}
-        contentContainerStyle={styles.messagesList}
-        showsVerticalScrollIndicator={false}
-      />
+      <TouchableWithoutFeedback 
+        onPress={() => {
+          if (isMultiSelectMode && selectedTaskIds.length === 0) {
+            clearSelection();
+          }
+        }}>
+        <View style={{ flex: 1 }}>
+          <FlatList
+            ref={flatListRef}
+            data={showCompletedTasks ? completedTasks : tasks}
+            renderItem={renderTaskMessage}
+            keyExtractor={item => item.id.toString()}
+            contentContainerStyle={styles.messagesList}
+            showsVerticalScrollIndicator={false}
+          />
+        </View>
+      </TouchableWithoutFeedback>
 
       {/* Input Area - Hidden when showing completed tasks */}
       {!showCompletedTasks && (
@@ -723,6 +840,30 @@ const TasksScreen: React.FC<TasksScreenProps> = ({}: any) => {
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
+
+      {/* Message Overlay - For task actions like reply, edit, etc. */}
+      {showOverlay && selectedTaskIds.length > 0 && (
+        <MessageOverlay
+          visible={showOverlay}
+          onClose={handleOverlayClose}
+          onReply={handleOverlayReply}
+          onStar={handleOverlayStar}
+          onDelete={handleOverlayDelete}
+          onForward={() => {}}
+          onForwardToList={(listId: number) => handleOverlayForward(listId)}
+          onCopy={handleOverlayCopy}
+          onEdit={handleOverlayEdit}
+          onPin={handleOverlayPin}
+          onMarkCompleted={handleOverlayMarkCompleted}
+          isStarred={selectedTask?.starred || false}
+          isPinned={selectedTask?.pinned || false}
+          isCompleted={selectedTask?.completed || false}
+          taskLists={taskLists}
+          currentListId={activeListId}
+          selectedCount={selectedTaskIds.length}
+        />
+      )}
+      </ImageBackground>
     </KeyboardAvoidingView>
   );
 };
@@ -731,6 +872,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0B0B0F',
+  },
+  backgroundImage: {
+    flex: 1,
+  },
+  backgroundImageStyle: {
+    opacity: 0.1,
+    resizeMode: 'repeat',
   },
   listSelector: {
     backgroundColor: '#18181B',
@@ -843,100 +991,6 @@ const styles = StyleSheet.create({
   messagesList: {
     padding: 8,
     paddingBottom: 20,
-  },
-  messageContainer: {
-    marginBottom: 12,
-    alignItems: 'flex-end',
-  },
-  messageBubble: {
-    backgroundColor: '#202023',
-    borderRadius: 18,
-    padding: 12,
-    maxWidth: '95%',
-    minWidth: '80%',
-  },
-  completedMessageBubble: {
-    backgroundColor: '#D1FAE5',
-  },
-  messageHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  checkbox: {
-    width: 16,
-    height: 16,
-    borderRadius: 3,
-    borderWidth: 1.5,
-    borderColor: '#374151',
-    marginRight: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  checkedBox: {
-    backgroundColor: '#10B981',
-    borderColor: '#10B981',
-  },
-  checkmark: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
-  messageTitle: {
-    fontSize: 15,
-    color: '#fff',
-    flex: 1,
-  },
-  completedText: {
-    textDecorationLine: 'line-through',
-    opacity: 0.8,
-  },
-  messageImage: {
-    width: '100%',
-    height: 150,
-    borderRadius: 8,
-    marginTop: 8,
-    marginBottom: 4,
-  },
-  urlContainer: {
-    backgroundColor: '#F3F4F6',
-    borderRadius: 8,
-    padding: 8,
-    marginTop: 4,
-    marginBottom: 4,
-  },
-  urlTitle: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#1155CC',
-    marginBottom: 2,
-  },
-  urlText: {
-    fontSize: 12,
-    color: '#',
-  },
-  messageDescription: {
-    fontSize: 13,
-    color: '#6B7280',
-    marginTop: 4,
-    lineHeight: 18,
-  },
-  messageFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    marginTop: 8,
-  },
-  priorityDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginRight: 6,
-  },
-  messageTime: {
-    fontSize: 11,
-    color: '#6B7280',
-    opacity: 0.8,
   },
   inputContainer: {
     flexDirection: 'row',
