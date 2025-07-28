@@ -41,6 +41,7 @@ android/app/src/main/res/drawable-*/
 android/app/src/main/res/raw/
 android/app/build/
 android/build/
+android/app/release/
 
 # React Navigation generated assets
 **/node_modules_reactnavigation_*
