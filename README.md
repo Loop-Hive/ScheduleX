@@ -6,7 +6,6 @@ A cross platform **React Native** application  designed to help you track attend
 
 - Figma Design : [Visit](https://www.figma.com/design/DrY27OZ8HGY1tmchlbkqes/Schedule-Keeper?node-id=12-2&p=f&t=gkQeY0d9I6aBPi8E-0)
 
-
 ## Features
 
 - 📊 **Track Attendance**: Easily mark & monitor attendance for different classes or events.
@@ -51,7 +50,8 @@ This project is licensed under the **MIT License**.
 
 ### 📩 Need Help?
 
-For issues or suggestions, create a GitHub issue or join our Discord community: [https://discord.gg/s8MbexBPjq](https://discord.gg/s8MbexBPjq)
+- While making Issues or PR's, Please Tag the maintainers using @anisharma07 or @Irtesaam to get faster response
+- For issues or suggestions, create a GitHub issue or join our Discord community: [https://discord.gg/s8MbexBPjq](https://discord.gg/s8MbexBPjq)
 
 <p align="center">
   ✨ <strong>Vibe • Coding • Imaginations</strong> ✨
