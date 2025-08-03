@@ -44,7 +44,8 @@ All set with the guidelines? Jump right into development by following our step-b
 
 ## Mentor
 - Nikhil Balamurugan
-  Mentor id: ![835CBDBD-4AC3-4D68-AEE7-941E6143CF6F_1_101_o](https://github.com/user-attachments/assets/c941310a-4ff7-42d2-99c6-f46712ca1d74)
+  Mentor id: B505Dfb7-Bb4F-4B7A-Ad73-7774342A9282
+  Github - https://github.com/Nikhil210206
 
 
 ## License
