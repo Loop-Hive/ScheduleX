@@ -28,6 +28,12 @@ We’d love your help in improving this project! Before diving in, please take a
 
 📋 **[Contributing Guidelines](.github/CONTRIBUTING.md)**
 
+## 📜 Code of Conduct
+
+To ensure a welcoming and respectful community, please make sure to read and follow our Code of Conduct:
+
+🤝 **[Code of Conduct](.github/CODE_OF_CONDUCT.md)**
+
 ## 🚀 Quick Start
 
 All set with the guidelines? Jump right into development by following our step-by-step setup instructions:
@@ -43,10 +49,9 @@ All set with the guidelines? Jump right into development by following our step-b
 - For more, refer to labels in repo's description.
 
 ## Mentor
-- Nikhil Balamurugan
-  Mentor id: B505Dfb7-Bb4F-4B7A-Ad73-7774342A9282
+- Nikhil Balamurugan  
+  Mentor id: B505Dfb7-Bb4F-4B7A-Ad73-7774342A9282  
   Github - https://github.com/Nikhil210206
-
 
 ## License
 
