@@ -1,106 +1,29 @@
-## 📋 Pull Request Summary
-
-<!-- Provide a brief description of the changes in this PR -->
-
-**Type of Change:**
-
-- [ ] 🚀 New feature
-- [ ] 🐛 Bug fix
-- [ ] 📚 Documentation update
-- [ ] 🎨 Code style/formatting
-- [ ] ♻️ Refactoring
-- [ ] ⚡ Performance improvement
-- [ ] 🧪 Adding tests
-- [ ] 🔧 Build/config changes
-
-## 🔗 Related Issue
-
-<!-- Link to the issue this PR addresses -->
+## Fixes
 
 Closes #<!-- issue number -->
 
-## 📝 Changes Made
+## Description
 
-<!-- Describe the specific changes made in this PR -->
+<!-- Briefly describe what changes you made -->
 
-- [ ] Change 1
-- [ ] Change 2
-- [ ] Change 3
+## Files Changed
 
-## 🧪 Testing
+- [ ] file1.js
+- [ ] file2.js
+- [ ] file3.js
 
-<!-- Describe how you tested these changes -->
+## Screenshots/Videos
 
-**Testing Environment:**
+<!-- Add screenshots or videos showing your changes -->
 
-- [ ] Android
-- [ ] iOS
-- [ ] Emulator/Simulator
-- [ ] Physical Device
+## GSSoC Contributor
 
-**Test Cases:**
+- [ ] Yes, I am a GSSoC contributor
+- [ ] No, I am not a GSSoC contributor
 
-- [ ] Feature works as expected
-- [ ] No regression in existing functionality
-- [ ] Edge cases handled properly
-- [ ] Error scenarios tested
+## Testing Device
 
-## 📱 Screenshots/Videos
-
-<!-- Add screenshots or videos demonstrating the changes (if applicable) -->
-
-| Before | After |
-| ------ | ----- |
-|        |       |
-
-## ✅ Checklist
-
-**Code Quality:**
-
-- [ ] Code follows the project's coding standards
-- [ ] Code is well-commented and self-documenting
-- [ ] No console.log or debug statements left in code
-- [ ] Proper error handling implemented
-
-**Testing:**
-
-- [ ] All tests pass
-- [ ] New tests added for new functionality
-- [ ] Manual testing completed
-- [ ] No breaking changes introduced
-
-**Documentation:**
-
-- [ ] README updated (if needed)
-- [ ] Code comments added for complex logic
-- [ ] API documentation updated (if applicable)
-
-**Git:**
-
-- [ ] Commit messages follow the conventional format
-- [ ] Branch name follows the naming convention
-- [ ] No merge conflicts
-- [ ] Squashed commits (if multiple small commits)
-
-## 🚨 Breaking Changes
-
-<!-- List any breaking changes (if any) -->
-
-- [ ] No breaking changes
-- [ ] ## Breaking changes (list below):
-
-## 📋 Additional Notes
-
-<!-- Any additional information, concerns, or context -->
-
-## 🔍 Reviewer Notes
-
-<!-- Any specific areas you'd like reviewers to focus on -->
-
----
-
-**For Maintainers:**
-
-- [ ] Labels added
-- [ ] Milestone assigned
-- [ ] Assignees added
+- [ ] Android Emulator
+- [ ] iOS Simulator
+- [ ] Physical Android Device
+- [ ] Physical iOS Device
