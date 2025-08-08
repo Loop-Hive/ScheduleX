@@ -30,6 +30,14 @@ interface StoreState {
   changeCopyRegister: (registerId: number) => void;
   setActiveRegister: (registerId: number) => void;
   setSelectedRegisters: (selectedIds: number[]) => void;
+  
+  selectedSchedules: string[];
+  setSelectedSchedules: (schedules: string[]) => void;
+
+  // Notification Lead Time (in minutes)
+  notificationLeadTime: number;
+  setNotificationLeadTime: (time: number) => void;
+  
   addRegister: (registerId: number, registerName: string) => void;
   renameRegister: (registerId: number, registerName: string) => void;
   removeRegister: (registerId: number) => void;
@@ -138,6 +146,14 @@ export const useStore = create<StoreState>()(
         set(() => ({
           copyRegister: registerId,
         })),
+      selectedSchedules: ['all'],
+  setSelectedSchedules: (schedules: string[]) =>
+    set({ selectedSchedules: schedules }),
+
+  // Lead time for notification (e.g., 10 minutes before)
+  notificationLeadTime: 10,
+  setNotificationLeadTime: (time: number) =>
+    set({ notificationLeadTime: time }),
 
       setActiveRegister: (registerId: number) =>
         set(state => ({
