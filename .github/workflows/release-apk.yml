@@ -128,7 +128,17 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '18'
-          cache: 'npm'
+          cache: 'yarn'
+
+      - name: 💾 Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            ~/.cache/yarn
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
 
       - name: ☕ Setup Java JDK
         uses: actions/setup-java@v4
@@ -175,18 +185,19 @@ jobs:
           echo "new=$NEW_VERSION" >> $GITHUB_OUTPUT
           echo "New version: $NEW_VERSION"
 
-      - name: � Install Dependencies
+      - name: 📦 Install Dependencies
         if: steps.check-existing.outputs.skip-build == 'false'
         run: |
-          npm ci
-          npm ls # List installed packages for debugging
+          yarn install --frozen-lockfile
+          yarn list # List installed packages for debugging
 
-      - name: �📝 Update Version in Files
+      - name: 📝 Update Version in Files
+        if: steps.check-existing.outputs.skip-build == 'false'
         run: |
           NEW_VERSION="${{ steps.new-version.outputs.new }}"
 
           # Update package.json
-          npm version $NEW_VERSION --no-git-tag-version
+          yarn version --new-version $NEW_VERSION --no-git-tag-version
 
           # Update Android versionName and versionCode
           VERSION_CODE=$(grep "versionCode" android/app/build.gradle | grep -o '[0-9]\+')
@@ -243,6 +254,7 @@ jobs:
           echo "✅ APK built successfully! Size: $APK_SIZE"
 
       - name: 🏷️ Create Git Tag
+        if: steps.check-existing.outputs.skip-build == 'false'
         run: |
           NEW_VERSION="${{ steps.new-version.outputs.new }}"
           git config user.name "github-actions[bot]"
@@ -255,6 +267,7 @@ jobs:
           git push origin "v$NEW_VERSION"
 
       - name: 📝 Generate Release Notes
+        if: steps.check-existing.outputs.skip-build == 'false'
         id: release-notes
         run: |
           NEW_VERSION="${{ steps.new-version.outputs.new }}"
@@ -294,6 +307,7 @@ jobs:
           echo "Release notes generated successfully"
 
       - name: 🎉 Create GitHub Release
+        if: steps.check-existing.outputs.skip-build == 'false'
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ steps.new-version.outputs.new }}
@@ -316,6 +330,7 @@ jobs:
           echo "🧹 Cleanup completed"
 
       - name: 📱 Post-Release Summary
+        if: steps.check-existing.outputs.skip-build == 'false'
         run: |
           NEW_VERSION="${{ steps.new-version.outputs.new }}"
           APK_PATH="android/app/build/outputs/apk/release/ScheduleX-v${NEW_VERSION}.apk"
