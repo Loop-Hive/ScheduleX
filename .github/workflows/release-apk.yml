@@ -175,7 +175,13 @@ jobs:
           echo "new=$NEW_VERSION" >> $GITHUB_OUTPUT
           echo "New version: $NEW_VERSION"
 
-      - name: 📝 Update Version in Files
+      - name: � Install Dependencies
+        if: steps.check-existing.outputs.skip-build == 'false'
+        run: |
+          npm ci
+          npm ls # List installed packages for debugging
+
+      - name: �📝 Update Version in Files
         run: |
           NEW_VERSION="${{ steps.new-version.outputs.new }}"
 
@@ -190,12 +196,6 @@ jobs:
           sed -i "s/versionName \".*\"/versionName \"$NEW_VERSION\"/" android/app/build.gradle
 
           echo "Updated version to $NEW_VERSION (code: $NEW_VERSION_CODE)"
-
-      - name: 📦 Install Dependencies
-        if: steps.check-existing.outputs.skip-build == 'false'
-        run: |
-          npm ci
-          npm ls # List installed packages for debugging
 
       - name: ⚠️ Release Already Exists
         if: steps.check-existing.outputs.skip-build == 'true'
@@ -221,6 +221,7 @@ jobs:
           EOF
 
       - name: 🔨 Build Release APK
+        if: steps.check-existing.outputs.skip-build == 'false'
         run: |
           cd android
           chmod +x gradlew
