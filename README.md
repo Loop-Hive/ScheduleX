@@ -50,24 +50,23 @@ All set with the guidelines? Jump right into development by following our step-b
 
 ## Project Admin (GSSoC'25)
 
-- Anirudh Sharma  
-  Project Admin ID: 825bed8f-Dff7-4c9c-Bdf7-De4c96ba1388  
-  GitHub - https://github.com/anisharma07
-  Mention - @anisharma07
+- Anirudh Sharma
+  - GitHub - https://github.com/anisharma07
+  - Mention - @anisharma07
 
-## Mentor (GSSoC'25)
+## Mentors (GSSoC'25)
 
-- Irtesaam  
-  GitHub - https://github.com/Irtesaam
-  Mention - @Irtesaam
+- Irtesaam
+  - GitHub - https://github.com/Irtesaam
+  - Mention - @Irtesaam
 
-- Nikhil Balamurugan  
-  GitHub - https://github.com/Nikhil210206
-  Mention - @Nikhil210206
+- Nikhil Balamurugan
+  - GitHub - https://github.com/Nikhil210206
+  - Mention - @Nikhil210206
 
 ## License
 
-This project is licensed under the **MIT License**.
+This project is licensed under the **MIT License**. See the [LICENSE.md](LICENSE.md) file for details.
 
 ---
 
