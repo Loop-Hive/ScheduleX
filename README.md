@@ -53,14 +53,17 @@ All set with the guidelines? Jump right into development by following our step-b
 - Anirudh Sharma  
   Project Admin ID: 825bed8f-Dff7-4c9c-Bdf7-De4c96ba1388  
   GitHub - https://github.com/anisharma07
+  Mention - @anisharma07
 
 ## Mentor (GSSoC'25)
 
 - Irtesaam  
   GitHub - https://github.com/Irtesaam
+  Mention - @Irtesaam
 
 - Nikhil Balamurugan  
   GitHub - https://github.com/Nikhil210206
+  Mention - @Nikhil210206
 
 ## License
 
@@ -70,7 +73,7 @@ This project is licensed under the **MIT License**.
 
 ### 📩 Need Help?
 
-- While making Issues or PR's, Please Tag the maintainers using @anisharma07 or @Irtesaam or @Nikhil210206 to get faster response
+- While making Issues or PR's, Please Tag any of the PA or mentors to get a faster response
 - For issues or suggestions, create a GitHub issue or join our Discord community: [https://discord.gg/s8MbexBPjq](https://discord.gg/s8MbexBPjq)
 
 <p align="center">
