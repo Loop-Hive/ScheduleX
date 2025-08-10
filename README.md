@@ -54,7 +54,7 @@ All set with the guidelines? Jump right into development by following our step-b
   - GitHub - https://github.com/anisharma07
   - Mention - @anisharma07
 
-## Mentor (GSSoC'25)
+## Mentors (GSSoC'25)
 
 - Irtesaam
   - GitHub - https://github.com/Irtesaam
@@ -66,7 +66,7 @@ All set with the guidelines? Jump right into development by following our step-b
 
 ## License
 
-This project is licensed under the **MIT License**.
+This project is licensed under the **MIT License**. See the [LICENSE.md](LICENSE.md) file for details.
 
 ---
 
