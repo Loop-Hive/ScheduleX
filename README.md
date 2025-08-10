@@ -1,6 +1,6 @@
 # ScheduleX: Attendance & Time Table Scheduling App
 
-A cross platform **React Native** application  designed to help you track attendance and manage shcedules with ease.
+A cross platform **React Native** application designed to help you track attendance and manage shcedules with ease.
 
 - Download : [Here](https://github.com/anisharma07/React-native-attendance-app/releases/download/v1.0.4/app-release.apk)
 
@@ -48,10 +48,19 @@ All set with the guidelines? Jump right into development by following our step-b
 - **React Navigation** - Seamless app navigation
 - For more, refer to labels in repo's description.
 
-## Mentor
+## Project Admin (GSSoC'25)
+
+- Anirudh Sharma  
+  Project Admin ID: 825bed8f-Dff7-4c9c-Bdf7-De4c96ba1388  
+  GitHub - https://github.com/anisharma07
+
+## Mentor (GSSoC'25)
+
+- Irtesaam  
+  GitHub - https://github.com/Irtesaam
+
 - Nikhil Balamurugan  
-  Mentor id: B505Dfb7-Bb4F-4B7A-Ad73-7774342A9282  
-  Github - https://github.com/Nikhil210206
+  GitHub - https://github.com/Nikhil210206
 
 ## License
 
@@ -61,7 +70,7 @@ This project is licensed under the **MIT License**.
 
 ### 📩 Need Help?
 
-- While making Issues or PR's, Please Tag the maintainers using @anisharma07 or @Irtesaam to get faster response
+- While making Issues or PR's, Please Tag the maintainers using @anisharma07 or @Irtesaam or @Nikhil210206 to get faster response
 - For issues or suggestions, create a GitHub issue or join our Discord community: [https://discord.gg/s8MbexBPjq](https://discord.gg/s8MbexBPjq)
 
 <p align="center">
