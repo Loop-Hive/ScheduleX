@@ -136,7 +136,7 @@ jobs:
           path: |
             node_modules
             ~/.cache/yarn
-          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/package.json') }}
           restore-keys: |
             ${{ runner.os }}-yarn-
 
@@ -188,7 +188,15 @@ jobs:
       - name: 📦 Install Dependencies
         run: |
           echo "Installing dependencies with Yarn..."
-          yarn install --frozen-lockfile
+
+          # Check if yarn.lock exists
+          if [ -f "yarn.lock" ]; then
+            echo "yarn.lock found, using frozen lockfile"
+            yarn install --frozen-lockfile
+          else
+            echo "No yarn.lock found, generating new one"
+            yarn install
+          fi
 
           # Verify React Native plugin is installed
           echo "Checking for React Native Gradle plugin..."
