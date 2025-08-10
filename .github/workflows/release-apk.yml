@@ -146,7 +146,33 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: 🔍 Get Current Version
+      - name: � Install Dependencies
+        run: |
+          echo "Installing dependencies with Yarn..."
+
+          # Check if yarn.lock exists
+          if [ -f "yarn.lock" ]; then
+            echo "yarn.lock found, using frozen lockfile"
+            yarn install --frozen-lockfile
+          else
+            echo "No yarn.lock found, generating new one"
+            yarn install
+          fi
+
+          # Verify React Native plugin is installed
+          echo "Checking for React Native Gradle plugin..."
+          if [ -d "node_modules/@react-native/gradle-plugin" ]; then
+            echo "✅ React Native Gradle plugin found"
+            ls -la node_modules/@react-native/gradle-plugin
+          else
+            echo "❌ React Native Gradle plugin NOT found"
+            echo "Available @react-native packages:"
+            ls -la node_modules/@react-native/ || echo "No @react-native directory found"
+          fi
+
+          yarn list --pattern "@react-native/gradle-plugin" # List specific package
+
+      - name: �🔍 Get Current Version
         id: current-version
         run: |
           CURRENT_VERSION=$(node -p "require('./package.json').version")
@@ -184,6 +210,10 @@ jobs:
           NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
           echo "new=$NEW_VERSION" >> $GITHUB_OUTPUT
           echo "New version: $NEW_VERSION"
+
+      - name: 📝 Update Version in Files
+        if: steps.check-existing.outputs.skip-build == 'false'
+        run: |
 
       - name: 📦 Install Dependencies
         run: |
