@@ -186,10 +186,22 @@ jobs:
           echo "New version: $NEW_VERSION"
 
       - name: 📦 Install Dependencies
-        if: steps.check-existing.outputs.skip-build == 'false'
         run: |
+          echo "Installing dependencies with Yarn..."
           yarn install --frozen-lockfile
-          yarn list # List installed packages for debugging
+
+          # Verify React Native plugin is installed
+          echo "Checking for React Native Gradle plugin..."
+          if [ -d "node_modules/@react-native/gradle-plugin" ]; then
+            echo "✅ React Native Gradle plugin found"
+            ls -la node_modules/@react-native/gradle-plugin
+          else
+            echo "❌ React Native Gradle plugin NOT found"
+            echo "Available @react-native packages:"
+            ls -la node_modules/@react-native/ || echo "No @react-native directory found"
+          fi
+
+          yarn list --pattern "@react-native/gradle-plugin" # List specific package
 
       - name: 📝 Update Version in Files
         if: steps.check-existing.outputs.skip-build == 'false'
@@ -234,6 +246,16 @@ jobs:
       - name: 🔨 Build Release APK
         if: steps.check-existing.outputs.skip-build == 'false'
         run: |
+          # Ensure node_modules exists and has React Native plugin
+          if [ ! -d "node_modules/@react-native/gradle-plugin" ]; then
+            echo "❌ React Native Gradle plugin not found in node_modules!"
+            echo "Available in node_modules/@react-native/:"
+            ls -la node_modules/@react-native/ || echo "Directory not found"
+            exit 1
+          fi
+
+          # Build from project root to maintain correct relative paths
+          echo "Building Android APK..."
           cd android
           chmod +x gradlew
           ./gradlew clean
