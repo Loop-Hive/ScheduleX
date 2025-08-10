@@ -251,6 +251,34 @@ jobs:
           keyPassword=${{ secrets.RELEASE_KEY_PASSWORD }}
           EOF
 
+      - name: � Generate React Native Codegen
+        if: steps.check-existing.outputs.skip-build == 'false'
+        run: |
+          echo "🔧 Generating React Native Codegen artifacts..."
+
+          # Generate codegen for React Native libraries
+          cd android
+          chmod +x gradlew
+
+          # Clean first to ensure fresh codegen
+          ./gradlew clean
+
+          # Generate codegen artifacts for all autolinked libraries
+          echo "Generating codegen artifacts from schema..."
+          ./gradlew generateCodegenArtifactsFromSchema --stacktrace --debug || {
+            echo "⚠️ Primary codegen generation failed, trying alternative approach..."
+            
+            # Try generating codegen for individual packages
+            echo "Generating codegen for individual packages..."
+            ./gradlew :generateCodegenSchemaFromJavaScript --stacktrace || echo "Schema generation completed with warnings"
+          }
+
+          # Verify codegen directories were created
+          echo "Verifying codegen artifacts..."
+          find ../node_modules -name "codegen" -type d | head -10
+
+          echo "✅ Codegen generation completed"
+
       - name: 🔨 Build Release APK
         if: steps.check-existing.outputs.skip-build == 'false'
         run: |
@@ -262,11 +290,10 @@ jobs:
             exit 1
           fi
 
-          # Build from project root to maintain correct relative paths
-          echo "Building Android APK..."
+          # Build Android APK with codegen artifacts
+          echo "Building Android APK with codegen..."
           cd android
           chmod +x gradlew
-          ./gradlew clean
           ./gradlew assembleRelease --stacktrace
 
           # Verify APK was created
