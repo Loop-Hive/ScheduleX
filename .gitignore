@@ -1,6 +1,7 @@
 # OSX
 #
 .DS_Store
+
 # Xcode
 #
 build/
@@ -17,7 +18,6 @@ xcuserdata
 *.moved-aside
 DerivedData
 .env
-.env.sample
 *.hmap
 *.ipa
 *.xcuserstate

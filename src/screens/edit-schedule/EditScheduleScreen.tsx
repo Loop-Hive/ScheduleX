@@ -12,10 +12,13 @@ import {
   Alert,
   ToastAndroid
 } from 'react-native';
+import Share from 'react-native-share';
+import RNFS from 'react-native-fs';
 import useStore from '../../store/store';
 import {CardInterface, Days, Slots} from '../../types/cards';
 import {getPreviewColorForBackground} from '../../types/allCardConstraint';
 import TimePicker from '../../components/TimePicker';
+import { generateRegisterCSV } from '../../utils/csv-export';
 
 interface ManageScheduleScreenProps {
   navigation: any;
@@ -139,6 +142,10 @@ const ManageScheduleScreen: React.FC<ManageScheduleScreenProps> = ({navigation})
   const [newSlotStartAM, setNewSlotStartAM] = useState(true);
   const [newSlotEndAM, setNewSlotEndAM] = useState(true);
   const [newSlotRoom, setNewSlotRoom] = useState('');
+
+  // Export modal state
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   // Initialize selectedRegisters if empty (handles first app launch)
   useEffect(() => {
@@ -295,6 +302,90 @@ const ManageScheduleScreen: React.FC<ManageScheduleScreenProps> = ({navigation})
       setNewSlotEndAM(endTime12.isAM);
       setNewSlotRoom(slot.roomName || '');
       setShowEditSlotModal(true);
+    }
+  };
+
+  // Export handler
+  const handleExport = async () => {
+    setShowExportModal(true);
+  };
+
+  const exportSelectedRegistersCSV = async (checkOnly = false, overwrite = false) => {
+    setExporting(true);
+    try {
+      let fileName = '';
+      let csv = '';
+      const registerList = selectedRegisters.map(registerIdx => {
+        const register = registers[registerIdx];
+        return register ? { name: register.name, cards: register.cards || [] } : null;
+      }).filter(Boolean) as { name: string, cards: CardInterface[] }[];
+      if (registerList.length === 1) {
+        fileName = `TimeTable_${registerList[0].name.replace(/\s+/g, '_')}.csv`;
+      } else if (registerList.length === getAllRegisterIds().length) {
+        fileName = `TimeTable_Grouped_All.csv`;
+      } else {
+        fileName = `TimeTable_Grouped_${registerList.length}.csv`;
+      }
+      csv = generateRegisterCSV(registerList);
+      const path = `${RNFS.DownloadDirectoryPath}/${fileName}`;
+      const exists = await RNFS.exists(path);
+      if (checkOnly && exists) {
+        return { path, fileName, exists: true };
+      }
+      if (!exists || overwrite) {
+        await RNFS.writeFile(path, csv, 'utf8');
+        return { path, fileName, exists: false };
+      }
+      if (!checkOnly && exists && !overwrite) {
+        return { path, fileName, exists: true };
+      }
+    } catch (e) {
+      Alert.alert('Export Failed', 'Could not export CSV.');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleSaveToDevice = async () => {
+    const result = await exportSelectedRegistersCSV(true); // pass checkOnly flag
+    if (result && result.exists) {
+      Alert.alert(
+        'File Exists',
+        `File already exists in Downloads as ${result.fileName}. Download again?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Yes', onPress: async () => {
+              await exportSelectedRegistersCSV(false, true); // force overwrite
+              ToastAndroid.show(
+                `Saved to: Downloads as ${result.fileName}`,
+                ToastAndroid.SHORT
+              );
+              setShowExportModal(false);
+            }
+          }
+        ]
+      );
+    } else if (result) {
+      ToastAndroid.show(
+        `Saved to: Downloads as ${result.fileName}`,
+        ToastAndroid.SHORT
+      );
+      setShowExportModal(false);
+    }
+  };
+
+  const handleShare = async () => {
+    const result = await exportSelectedRegistersCSV();
+    if (result) {
+      const shareOptions = {
+        title: 'Share Time Table',
+        url: 'file://' + result.path,
+        type: 'text/csv',
+      };
+      try {
+        await Share.open(shareOptions);
+      } catch (e) {}
+      setShowExportModal(false);
     }
   };
 
@@ -613,6 +704,15 @@ const ManageScheduleScreen: React.FC<ManageScheduleScreenProps> = ({navigation})
             {'Manage\nSchedule'}
           </Text>
         </View>
+        <TouchableOpacity
+          style={styles.editButton}
+          onPress={handleExport}
+        >
+          <Image
+            source={require('../../assets/icons/export.png')}
+            style={styles.editIcon}
+          />
+        </TouchableOpacity>
         <View style={styles.dropdownContainer}>
           <TouchableOpacity
             style={styles.dropdownButton}
@@ -877,6 +977,65 @@ const ManageScheduleScreen: React.FC<ManageScheduleScreenProps> = ({navigation})
                 <Text style={styles.saveButtonText}>Update</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Export Modal */}
+      <Modal
+        visible={showExportModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowExportModal(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', alignItems: 'center' }}>
+          <View style={{ backgroundColor: '#05050b', borderRadius: 18, padding: 20, width: 300, shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 12, elevation: 8 }}>
+            <Text style={{ color: '#f3f3f3', fontSize: 20, fontWeight: 'bold', marginBottom: 6, textAlign: 'center', letterSpacing: 0.5 }}>Export Schedule</Text>
+            <Text style={{ color: '#b0b0c3', fontSize: 14, marginBottom: 18, textAlign: 'center' }}>Save or share your selected register's schedule as a CSV file.</Text>
+            <TouchableOpacity
+              style={{
+                backgroundColor: '#8B5CF6',
+                borderRadius: 10,
+                paddingVertical: 13,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 14,
+              }}
+              onPress={handleSaveToDevice}
+              disabled={exporting}
+            >
+              <Image source={require('../../assets/icons/save.png')} style={{ width: 20, height: 20, marginRight: 10, tintColor: '#fff' }} />
+              <Text style={{ color: '#f3f3f3', fontSize: 16, fontWeight: '600' }}>Save to Device</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{
+                backgroundColor: '#0c81c9',
+                borderRadius: 10,
+                paddingVertical: 13,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 14,
+              }}
+              onPress={handleShare}
+              disabled={exporting}
+            >
+              <Image source={require('../../assets/icons/share.png')} style={{ width: 20, height: 20, marginRight: 10, tintColor: '#fff' }} />
+              <Text style={{ color: '#f3f3f3', fontSize: 16, fontWeight: '600' }}>Share</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{
+                backgroundColor: '#35324c',
+                borderRadius: 10,
+                paddingVertical: 11,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              onPress={() => setShowExportModal(false)}
+            >
+              <Text style={{ color: '#f3f3f3', fontSize: 15 }}>Cancel</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>

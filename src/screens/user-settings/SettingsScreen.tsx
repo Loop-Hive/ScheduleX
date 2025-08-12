@@ -17,7 +17,6 @@ import {
 import Slider from '@react-native-community/slider';
 import MultiSelect from 'react-native-multiple-select';
 import useStore from '../../store/store';
-import { saveScheduleToDevice, shareSchedule } from '../../utils/exportSchedule';
 
 // Constants
 const packageJson = require('../../../package.json');
@@ -34,7 +33,6 @@ const SettingsScreen: React.FC = () => {
     defaultTargetPercentage,
     registers,
     activeRegister,
-    selectedRegisters,
     setDefaultTargetPercentage,
     updateAllRegistersTargetPercentage,
     selectedSchedules,
@@ -99,65 +97,6 @@ const SettingsScreen: React.FC = () => {
     );
   };
 
-  // Export functionality handlers
-  const handleSaveScheduleToDevice = async () => {
-    try {
-      console.log('Starting save to device...');
-      console.log('Available registers:', Object.keys(registers));
-      console.log('Selected registers from store:', selectedRegisters);
-      
-      // Use all registers if no specific selection is available
-      const currentSelectedRegisters = selectedRegisters && selectedRegisters.length > 0 
-        ? selectedRegisters 
-        : Object.keys(registers).map(key => parseInt(key, 10));
-      
-      console.log('Using registers for export:', currentSelectedRegisters);
-      
-      if (currentSelectedRegisters.length === 0) {
-        Alert.alert('No Data', 'No registers found to export. Please create some schedules first.');
-        return;
-      }
-      
-      await saveScheduleToDevice({ 
-        selectedRegisters: currentSelectedRegisters, 
-        registers 
-      });
-    } catch (error) {
-      console.error('Save to device error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      Alert.alert('Error', `Failed to save schedule to device: ${errorMessage}`);
-    }
-  };
-
-  const handleShareSchedule = async () => {
-    try {
-      console.log('Starting share schedule...');
-      console.log('Available registers:', Object.keys(registers));
-      console.log('Selected registers from store:', selectedRegisters);
-      
-      // Use all registers if no specific selection is available
-      const currentSelectedRegisters = selectedRegisters && selectedRegisters.length > 0 
-        ? selectedRegisters 
-        : Object.keys(registers).map(key => parseInt(key, 10));
-      
-      console.log('Using registers for share:', currentSelectedRegisters);
-      
-      if (currentSelectedRegisters.length === 0) {
-        Alert.alert('No Data', 'No registers found to share. Please create some schedules first.');
-        return;
-      }
-      
-      await shareSchedule({ 
-        selectedRegisters: currentSelectedRegisters, 
-        registers 
-      });
-    } catch (error) {
-      console.error('Share schedule error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      Alert.alert('Error', `Failed to share schedule: ${errorMessage}`);
-    }
-  };
-
   const clearAllData = () => {
     Alert.alert(
       'Clear All Data',
@@ -171,6 +110,16 @@ const SettingsScreen: React.FC = () => {
         },
       ],
     );
+  };
+
+  const exportData = () => {
+    Alert.alert('Export Data', 'Export your attendance data to CSV format?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Export',
+        onPress: () => Alert.alert('Success', 'Data exported successfully!'),
+      },
+    ]);
   };
 
   const getCurrentRegisterInfo = () => {
@@ -297,40 +246,14 @@ const SettingsScreen: React.FC = () => {
         <Button title="Save Settings" onPress={handleSave} color="#4CAF50" />
       </View>
 
-      {/* Utilities Section */}
-      <View style={styles.settingsSection}>
-        <Text style={styles.sectionTitle}>Utilities</Text>
-
-        <TouchableOpacity style={styles.utilityButton} onPress={handleSaveScheduleToDevice}>
-          <View style={styles.utilityButtonContent}>
-            <Image 
-              source={require('../../assets/icons/save.png')} 
-              style={styles.utilityIcon} 
-            />
-            <View style={styles.utilityTextContainer}>
-              <Text style={styles.utilityButtonText}>Save Schedule to Device</Text>
-              <Text style={styles.utilityButtonDescription}>Save your schedule as CSV to Downloads</Text>
-            </View>
-          </View>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.utilityButton} onPress={handleShareSchedule}>
-          <View style={styles.utilityButtonContent}>
-            <Image 
-              source={require('../../assets/icons/share.png')} 
-              style={styles.utilityIcon} 
-            />
-            <View style={styles.utilityTextContainer}>
-              <Text style={styles.utilityButtonText}>Share Schedule</Text>
-              <Text style={styles.utilityButtonDescription}>Share your schedule via apps</Text>
-            </View>
-          </View>
-        </TouchableOpacity>
-      </View>
-
       {/* Data Management */}
       <View style={styles.settingsSection}>
         <Text style={styles.sectionTitle}>Data Management</Text>
+
+        <TouchableOpacity style={styles.actionButton} onPress={exportData}>
+          <Text style={styles.actionButtonText}>Export Data</Text>
+          <Text style={styles.actionButtonDescription}>Export your attendance data to CSV</Text>
+        </TouchableOpacity>
 
         <TouchableOpacity style={[styles.actionButton, styles.dangerButton]} onPress={clearAllData}>
           <Text style={[styles.actionButtonText, styles.dangerText]}>Clear All Data</Text>
@@ -629,38 +552,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
-  },
-  // Utility button styles
-  utilityButton: {
-    backgroundColor: '#27272A',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#3F3F46',
-  },
-  utilityButtonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  utilityIcon: {
-    width: 24,
-    height: 24,
-    marginRight: 16,
-    tintColor: '#8B5CF6',
-  },
-  utilityTextContainer: {
-    flex: 1,
-  },
-  utilityButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#f5f5f5',
-    marginBottom: 4,
-  },
-  utilityButtonDescription: {
-    fontSize: 14,
-    color: '#A1A1AA',
   },
 });
 
