@@ -47,4 +47,38 @@ const pickCSVFile = async () => {
   return csvdata;
 };
 
+// New function to get raw CSV content without parsing
+export const pickCSVFileRaw = async (): Promise<string | null> => {
+  try {
+    const res = await pick({
+      allowMultiSelection: false,
+      type: [types.csv],
+    });
+
+    if (!res.every(file => file.hasRequestedType)) {
+      console.error('Some selected files are not csv.');
+      return null;
+    }
+
+    console.log('Selected files:', res);
+
+    for (const file of res) {
+      const fileUri = file.uri;
+      console.log('File URI:', fileUri);
+
+      // Read raw file content
+      const fileContent = await RNFS.readFile(fileUri, 'utf8');
+      console.log('Raw CSV Content:', fileContent);
+      return fileContent;
+    }
+  } catch (err: any) {
+    if (err?.code === 'DOCUMENT_PICKER_CANCELED') {
+      console.log('User cancelled the picker');
+    } else {
+      console.error('Error picking document:', err);
+    }
+  }
+  return null;
+};
+
 export default pickCSVFile;

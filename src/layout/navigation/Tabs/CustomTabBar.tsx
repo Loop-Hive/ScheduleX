@@ -119,9 +119,31 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({state, navigation}) => {
     navigation.navigate('Ai');
   };
 
-  const handleImportSubjects = () => {
-    // Navigate to import subjects screen when implemented
-    console.log('Import Subjects pressed');
+  const handleImportSubjects = async () => {
+    try {
+      const { pickCSVFileRaw } = require('../../../utils/csv-picker');
+      const { importAndAddToRegisterFromContent } = require('../../../utils/csv-import');
+      
+      console.log('Import Subjects pressed - starting CSV picker...');
+      
+      // Pick CSV file and get raw content
+      const csvContent = await pickCSVFileRaw();
+      
+      if (csvContent) {
+        console.log('CSV file selected, starting import...');
+        // Import and add to current register
+        await importAndAddToRegisterFromContent(csvContent);
+      } else {
+        console.log('No CSV file selected');
+      }
+    } catch (error) {
+      console.error('Error importing subjects:', error);
+      const { Alert } = require('react-native');
+      Alert.alert(
+        'Import Failed',
+        `Failed to import subjects: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
   };
 
   return (

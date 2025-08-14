@@ -59,6 +59,7 @@ interface StoreState {
   removeCard: (registerId: number, cardIndex: number) => void;
   addAiCard: (registerId: number, aiCard: AiCardInterface) => void;
   addMultipleAiCards: (registerId: number, aiCards: AiCardInterface[]) => void;
+  addMultipleCards: (registerId: number, cards: CardInterface[]) => void;
   setRegisterColor: (registerId: number, color: string) => void;
 }
 
@@ -637,6 +638,22 @@ export const useStore = create<StoreState>()(
               [registerId]: {
                 ...state.registers[registerId],
                 cards: [...currentCards, ...newCards],
+              },
+            },
+            updatedAt: new Date(),
+          };
+        }),
+
+      addMultipleCards: (registerId: number, cards: CardInterface[]) =>
+        set(state => {
+          const currentCards = state.registers[registerId]?.cards || [];
+
+          return {
+            registers: {
+              ...state.registers,
+              [registerId]: {
+                ...state.registers[registerId],
+                cards: [...currentCards, ...cards],
               },
             },
             updatedAt: new Date(),
