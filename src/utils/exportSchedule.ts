@@ -1,3 +1,29 @@
+/**
+ * Rename an exported CSV file in the Downloads directory.
+ * @param oldName The current filename (with .csv)
+ * @param newName The new filename (without .csv or with .csv)
+ * @returns Promise<boolean> true if successful, false otherwise
+ */
+export async function renameExportedCSV(oldName: string, newName: string): Promise<boolean> {
+  try {
+    const downloadsDir = RNFS.DownloadDirectoryPath;
+    const oldPath = `${downloadsDir}/${oldName}`;
+    let newFileName = newName.endsWith('.csv') ? newName : `${newName}.csv`;
+    const newPath = `${downloadsDir}/${newFileName}`;
+    const exists = await RNFS.exists(oldPath);
+    if (!exists) {
+      Alert.alert('Rename Failed', `File ${oldName} does not exist.`);
+      return false;
+    }
+    await RNFS.moveFile(oldPath, newPath);
+    ToastAndroid.show(`Renamed to ${newFileName}`, ToastAndroid.SHORT);
+    return true;
+  } catch (e) {
+    console.error('Rename error:', e);
+    Alert.alert('Rename Failed', `Could not rename file: ${e instanceof Error ? e.message : 'Unknown error'}`);
+    return false;
+  }
+}
 import RNFS from 'react-native-fs';
 import { Alert, ToastAndroid, Platform, PermissionsAndroid } from 'react-native';
 import Share from 'react-native-share';
