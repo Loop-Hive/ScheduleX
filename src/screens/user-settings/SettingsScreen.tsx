@@ -18,6 +18,8 @@ import Slider from '@react-native-community/slider';
 import MultiSelect from 'react-native-multiple-select';
 import useStore from '../../store/store';
 import { saveScheduleToDevice, shareSchedule } from '../../utils/exportSchedule';
+import pickCSVFile, { pickCSVFileRaw } from '../../utils/csv-picker';
+import { importAndAddToRegisterFromContent } from '../../utils/csv-import';
 
 // Constants
 const packageJson = require('../../../package.json');
@@ -41,6 +43,7 @@ const SettingsScreen: React.FC = () => {
     setSelectedSchedules,
     notificationLeadTime,
     setNotificationLeadTime,
+    addMultipleCards,
   } = useStore();
 
   const [darkMode, setDarkMode] = useState(true);
@@ -155,6 +158,40 @@ const SettingsScreen: React.FC = () => {
       console.error('Share schedule error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       Alert.alert('Error', `Failed to share schedule: ${errorMessage}`);
+    }
+  };
+
+  const handleImportSchedule = async () => {
+    try {
+      console.log('Starting CSV import...');
+      
+      if (!registers[activeRegister]) {
+        Alert.alert('Error', 'No active register found. Please create a register first.');
+        return;
+      }
+
+      // Use raw CSV content instead of parsed data
+      const csvContent = await pickCSVFileRaw();
+      console.log('Raw CSV Content received:', csvContent);
+      
+      if (!csvContent) {
+        console.log('No CSV content received (user cancelled or error)');
+        return;
+      }
+
+      // Use the import utility with the current active register
+      const currentCards = registers[activeRegister]?.cards || [];
+      await importAndAddToRegisterFromContent(
+        csvContent,
+        activeRegister,
+        currentCards,
+        addMultipleCards
+      );
+
+    } catch (error) {
+      console.error('Import schedule error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      Alert.alert('Error', `Failed to import schedule: ${errorMessage}`);
     }
   };
 
@@ -323,6 +360,19 @@ const SettingsScreen: React.FC = () => {
             <View style={styles.utilityTextContainer}>
               <Text style={styles.utilityButtonText}>Share Schedule</Text>
               <Text style={styles.utilityButtonDescription}>Share your schedule via apps</Text>
+            </View>
+          </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.utilityButton} onPress={handleImportSchedule}>
+          <View style={styles.utilityButtonContent}>
+            <Image 
+              source={require('../../assets/icons/export.png')} 
+              style={styles.utilityIcon} 
+            />
+            <View style={styles.utilityTextContainer}>
+              <Text style={styles.utilityButtonText}>Import Schedule from CSV</Text>
+              <Text style={styles.utilityButtonDescription}>Import subjects from a CSV file</Text>
             </View>
           </View>
         </TouchableOpacity>

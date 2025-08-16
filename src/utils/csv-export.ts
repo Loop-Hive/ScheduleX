@@ -12,6 +12,7 @@ export function generateRegisterCSV(registers: { name: string, cards: CardInterf
     const register = registers[0];
     csv += `${register.name}\n\n`;
 
+    // First, add all subjects with their scheduled time slots
     dayKeys.forEach((dayKey, i) => {
       const subjectRows: string[] = [];
       register.cards.forEach(card => {
@@ -27,7 +28,25 @@ export function generateRegisterCSV(registers: { name: string, cards: CardInterf
         csv += subjectRows.join('\n') + '\n\n';
       }
     });
+
+    // Add a section for subjects without any time slots
+    const subjectsWithoutSlots = register.cards.filter(card => {
+      return dayKeys.every(dayKey => {
+        const slots = card.days[dayKey] || [];
+        return slots.length === 0;
+      });
+    });
+
+    if (subjectsWithoutSlots.length > 0) {
+      csv += `Subjects Without Time Slots\n`;
+      csv += `Subject,Start Time,End Time,Room\n`;
+      subjectsWithoutSlots.forEach(card => {
+        csv += `${card.title},Not Scheduled,Not Scheduled,Not Assigned\n`;
+      });
+      csv += '\n';
+    }
   } else {
+    // Handle multiple registers
     dayKeys.forEach((dayKey, i) => {
       let daySection = `,Day: ${dayNames[i]}\n`;
 
@@ -48,6 +67,25 @@ export function generateRegisterCSV(registers: { name: string, cards: CardInterf
 
       if (daySection.trim()) {
         csv += daySection;
+      }
+    });
+
+    // Add sections for subjects without time slots for each register
+    registers.forEach(register => {
+      const subjectsWithoutSlots = register.cards.filter(card => {
+        return dayKeys.every(dayKey => {
+          const slots = card.days[dayKey] || [];
+          return slots.length === 0;
+        });
+      });
+
+      if (subjectsWithoutSlots.length > 0) {
+        csv += `,${register.name} - Subjects Without Time Slots\n`;
+        csv += `,Subject,Start Time,End Time,Room\n`;
+        subjectsWithoutSlots.forEach(card => {
+          csv += `,${card.title},Not Scheduled,Not Scheduled,Not Assigned\n`;
+        });
+        csv += '\n';
       }
     });
   }
