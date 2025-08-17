@@ -19,7 +19,7 @@ import {
 import Slider from '@react-native-community/slider';
 import MultiSelect from 'react-native-multiple-select';
 import useStore from '../../store/store';
-import { saveScheduleToDevice, shareSchedule } from '../../utils/exportSchedule';
+import { saveScheduleToDevice, shareSchedule, saveScheduleToDeviceWithName } from '../../utils/exportSchedule';
 import pickCSVFile, { pickCSVFileRaw } from '../../utils/csv-picker';
 import { importAndAddToRegisterFromContent } from '../../utils/csv-import';
 
@@ -58,6 +58,10 @@ const SettingsScreen: React.FC = () => {
   const [newTargetValue, setNewTargetValue] = useState(defaultTargetPercentage.toString());
   const [localLeadTime, setLocalLeadTime] = useState(notificationLeadTime);
   const [localSchedules, setLocalSchedules] = useState<string[]>(selectedSchedules);
+  // CSV filename modal state
+  const [showFileNameModal, setShowFileNameModal] = useState(false);
+  const [csvFileName, setCsvFileName] = useState('MySchedule');
+  const [isSaving, setIsSaving] = useState(false);
 
   const registerOptions = Object.keys(registers).map(key => ({
     id: key,
@@ -111,33 +115,33 @@ const SettingsScreen: React.FC = () => {
   };
 
   // Export functionality handlers
-  const handleSaveScheduleToDevice = async () => {
-    try {
-      console.log('Starting save to device...');
-      console.log('Available registers:', Object.keys(registers));
-      console.log('Selected registers from store:', selectedRegisters);
+  // Show modal to enter filename
+  const handleSaveScheduleToDevice = () => {
+    setShowFileNameModal(true);
+  };
 
-      // Use all registers if no specific selection is available
+  // Actually save with filename
+  const handleConfirmSaveFileName = async () => {
+    setIsSaving(true);
+    try {
       const currentSelectedRegisters = selectedRegisters && selectedRegisters.length > 0
         ? selectedRegisters
         : Object.keys(registers).map(key => parseInt(key, 10));
-
-      console.log('Using registers for export:', currentSelectedRegisters);
-
       if (currentSelectedRegisters.length === 0) {
         Alert.alert('No Data', 'No registers found to export. Please create some schedules first.');
+        setIsSaving(false);
         return;
       }
-
-      await saveScheduleToDevice({
+      await saveScheduleToDeviceWithName({
         selectedRegisters: currentSelectedRegisters,
         registers
-      });
+      }, csvFileName);
+      setShowFileNameModal(false);
     } catch (error) {
-      console.error('Save to device error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       Alert.alert('Error', `Failed to save schedule to device: ${errorMessage}`);
     }
+    setIsSaving(false);
   };
 
   const handleShareSchedule = async () => {
@@ -380,6 +384,49 @@ const SettingsScreen: React.FC = () => {
             </View>
           </View>
         </TouchableOpacity>
+        {/* CSV Filename Modal */}
+        <Modal
+          visible={showFileNameModal}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setShowFileNameModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContainer}>
+              <Text style={styles.modalTitle}>Enter CSV Filename</Text>
+              <Text style={styles.modalSubtitle}>This will be the name of your exported CSV file.</Text>
+              <View style={styles.inputContainer}>
+                <TextInput
+                  style={styles.input}
+                  value={csvFileName}
+                  onChangeText={setCsvFileName}
+                  placeholder="Enter filename"
+                  placeholderTextColor="#71717A"
+                  maxLength={40}
+                  selectTextOnFocus={true}
+                  autoFocus={true}
+                />
+                <Text style={styles.percentSymbol}>.csv</Text>
+              </View>
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.cancelButton]}
+                  onPress={() => setShowFileNameModal(false)}
+                  disabled={isSaving}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.saveButton]}
+                  onPress={handleConfirmSaveFileName}
+                  disabled={isSaving || !csvFileName.trim()}
+                >
+                  <Text style={styles.saveButtonText}>{isSaving ? 'Saving...' : 'Save'}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
 
         <TouchableOpacity style={styles.utilityButton} onPress={handleShareSchedule}>
           <View style={styles.utilityButtonContent}>
