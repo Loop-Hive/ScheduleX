@@ -3,6 +3,7 @@ import { Alert, ToastAndroid, Platform, PermissionsAndroid } from 'react-native'
 import Share from 'react-native-share';
 import { generateRegisterCSV } from './csv-export';
 import { CardInterface } from '../types/cards';
+import { PermissionsHelper } from './permissions';
 
 export interface ExportResult {
   path: string;
@@ -25,25 +26,9 @@ export class ExportScheduleUtility {
   }
 
   private async checkStoragePermission(): Promise<boolean> {
-    if (Platform.OS === 'android') {
-      try {
-        const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
-          {
-            title: 'Storage Permission',
-            message: 'App needs access to storage to save CSV files',
-            buttonNeutral: 'Ask Me Later',
-            buttonNegative: 'Cancel',
-            buttonPositive: 'OK',
-          }
-        );
-        return granted === PermissionsAndroid.RESULTS.GRANTED;
-      } catch (err) {
-        console.warn(err);
-        return false;
-      }
-    }
-    return true; // iOS doesn't need explicit storage permission for app documents
+    // Use PermissionsHelper for consistent permission logic
+    const result = await PermissionsHelper.requestStoragePermission();
+    return result.granted;
   }
 
   private getAllRegisterIds(): number[] {
