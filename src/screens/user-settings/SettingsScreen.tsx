@@ -1,3 +1,5 @@
+// src/screens/user-settings/SettingsScreen.tsx
+
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -37,6 +39,8 @@ const SettingsScreen: React.FC = () => {
     registers,
     activeRegister,
     selectedRegisters,
+    viewingRegisters,
+    setViewingRegisters,
     setDefaultTargetPercentage,
     updateAllRegistersTargetPercentage,
     selectedSchedules,
@@ -55,6 +59,10 @@ const SettingsScreen: React.FC = () => {
   const [localLeadTime, setLocalLeadTime] = useState(notificationLeadTime);
   const [localSchedules, setLocalSchedules] = useState<string[]>(selectedSchedules);
 
+  const registerOptions = Object.keys(registers).map(key => ({
+    id: key,
+    name: registers[parseInt(key)].name,
+  }));
   // Effects
   useEffect(() => {
     setAppVersion(packageJson.version);
@@ -108,22 +116,22 @@ const SettingsScreen: React.FC = () => {
       console.log('Starting save to device...');
       console.log('Available registers:', Object.keys(registers));
       console.log('Selected registers from store:', selectedRegisters);
-      
+
       // Use all registers if no specific selection is available
-      const currentSelectedRegisters = selectedRegisters && selectedRegisters.length > 0 
-        ? selectedRegisters 
+      const currentSelectedRegisters = selectedRegisters && selectedRegisters.length > 0
+        ? selectedRegisters
         : Object.keys(registers).map(key => parseInt(key, 10));
-      
+
       console.log('Using registers for export:', currentSelectedRegisters);
-      
+
       if (currentSelectedRegisters.length === 0) {
         Alert.alert('No Data', 'No registers found to export. Please create some schedules first.');
         return;
       }
-      
-      await saveScheduleToDevice({ 
-        selectedRegisters: currentSelectedRegisters, 
-        registers 
+
+      await saveScheduleToDevice({
+        selectedRegisters: currentSelectedRegisters,
+        registers
       });
     } catch (error) {
       console.error('Save to device error:', error);
@@ -137,22 +145,22 @@ const SettingsScreen: React.FC = () => {
       console.log('Starting share schedule...');
       console.log('Available registers:', Object.keys(registers));
       console.log('Selected registers from store:', selectedRegisters);
-      
+
       // Use all registers if no specific selection is available
-      const currentSelectedRegisters = selectedRegisters && selectedRegisters.length > 0 
-        ? selectedRegisters 
+      const currentSelectedRegisters = selectedRegisters && selectedRegisters.length > 0
+        ? selectedRegisters
         : Object.keys(registers).map(key => parseInt(key, 10));
-      
+
       console.log('Using registers for share:', currentSelectedRegisters);
-      
+
       if (currentSelectedRegisters.length === 0) {
         Alert.alert('No Data', 'No registers found to share. Please create some schedules first.');
         return;
       }
-      
-      await shareSchedule({ 
-        selectedRegisters: currentSelectedRegisters, 
-        registers 
+
+      await shareSchedule({
+        selectedRegisters: currentSelectedRegisters,
+        registers
       });
     } catch (error) {
       console.error('Share schedule error:', error);
@@ -164,7 +172,7 @@ const SettingsScreen: React.FC = () => {
   const handleImportSchedule = async () => {
     try {
       console.log('Starting CSV import...');
-      
+
       if (!registers[activeRegister]) {
         Alert.alert('Error', 'No active register found. Please create a register first.');
         return;
@@ -173,7 +181,7 @@ const SettingsScreen: React.FC = () => {
       // Use raw CSV content instead of parsed data
       const csvContent = await pickCSVFileRaw();
       console.log('Raw CSV Content received:', csvContent);
-      
+
       if (!csvContent) {
         console.log('No CSV content received (user cancelled or error)');
         return;
@@ -238,7 +246,6 @@ const SettingsScreen: React.FC = () => {
         <Text style={styles.infoValue}>{registerInfo.name}</Text>
         <Text style={styles.infoSubtext}>{registerInfo.totalCards} subjects</Text>
       </View>
-
       {/* Preferences Section */}
       <View style={styles.settingsSection}>
         <Text style={styles.sectionTitle}>Preferences</Text>
@@ -294,6 +301,30 @@ const SettingsScreen: React.FC = () => {
         </View>
       </View>
 
+      {/* Schedule View Section */}
+      <View style={styles.settingsSection}>
+        <Text style={styles.sectionTitle}>Schedule View</Text>
+        <Text style={styles.settingLabel}>Select Registers to View</Text>
+        <MultiSelect
+          items={registerOptions}
+          uniqueKey="id"
+          onSelectedItemsChange={(items) => setViewingRegisters(items.map(Number))}
+          selectedItems={viewingRegisters.map(String)}
+          selectText="Pick Registers"
+          searchInputPlaceholderText="Search Registers..."
+          tagRemoveIconColor="#EF4444"
+          tagTextColor="#9a4848ff"
+          selectedItemTextColor="#4CAF50"
+          selectedItemIconColor="#4CAF50"
+          itemTextColor="#bb5656ff"
+          displayKey="name"
+          searchInputStyle={{ color: '#e23939ff' }}
+          submitButtonColor="#4CAF50"
+          submitButtonText="Apply"
+          styleMainWrapper={{ backgroundColor: '#27272A', borderRadius: 12, padding: 10 }}
+        />
+      </View>
+
       {/* Notifications & Alerts Section */}
       <View style={styles.settingsSection}>
         <Text style={styles.sectionTitle}>Notifications & Alerts</Text>
@@ -333,16 +364,15 @@ const SettingsScreen: React.FC = () => {
         />
         <Button title="Save Settings" onPress={handleSave} color="#4CAF50" />
       </View>
-
       {/* Utilities Section */}
       <View style={styles.settingsSection}>
         <Text style={styles.sectionTitle}>Utilities</Text>
 
         <TouchableOpacity style={styles.utilityButton} onPress={handleSaveScheduleToDevice}>
           <View style={styles.utilityButtonContent}>
-            <Image 
-              source={require('../../assets/icons/save.png')} 
-              style={styles.utilityIcon} 
+            <Image
+              source={require('../../assets/icons/save.png')}
+              style={styles.utilityIcon}
             />
             <View style={styles.utilityTextContainer}>
               <Text style={styles.utilityButtonText}>Save Schedule to Device</Text>
@@ -353,9 +383,9 @@ const SettingsScreen: React.FC = () => {
 
         <TouchableOpacity style={styles.utilityButton} onPress={handleShareSchedule}>
           <View style={styles.utilityButtonContent}>
-            <Image 
-              source={require('../../assets/icons/share.png')} 
-              style={styles.utilityIcon} 
+            <Image
+              source={require('../../assets/icons/share.png')}
+              style={styles.utilityIcon}
             />
             <View style={styles.utilityTextContainer}>
               <Text style={styles.utilityButtonText}>Share Schedule</Text>
@@ -366,9 +396,9 @@ const SettingsScreen: React.FC = () => {
 
         <TouchableOpacity style={styles.utilityButton} onPress={handleImportSchedule}>
           <View style={styles.utilityButtonContent}>
-            <Image 
-              source={require('../../assets/icons/export.png')} 
-              style={styles.utilityIcon} 
+            <Image
+              source={require('../../assets/icons/export.png')}
+              style={styles.utilityIcon}
             />
             <View style={styles.utilityTextContainer}>
               <Text style={styles.utilityButtonText}>Import Schedule from CSV</Text>
@@ -456,7 +486,6 @@ const SettingsScreen: React.FC = () => {
     </>
   );
 };
-
 // Styles
 const styles = StyleSheet.create({
   container: {
@@ -713,5 +742,4 @@ const styles = StyleSheet.create({
     color: '#A1A1AA',
   },
 });
-
 export default SettingsScreen;

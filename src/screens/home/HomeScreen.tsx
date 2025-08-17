@@ -1,3 +1,5 @@
+// src/screens/home/HomeScreen.tsx
+
 import React, {useState, useEffect} from 'react';
 import {
   View,
@@ -33,7 +35,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
   navigation,
   toggleSidebar,
 }: any) => {
-  const {registers, activeRegister, updatedAt} = useStore();
+  const {registers, activeRegister, viewingRegisters, updatedAt} = useStore();
   const [currentEvents, setCurrentEvents] = useState<EventInfo[]>([]);
   const [upcomingEvents, setUpcomingEvents] = useState<EventInfo[]>([]);
 
@@ -63,38 +65,39 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
     return now.getHours() * 60 + now.getMinutes();
   };
 
-  // Process events from current register
+  // Process events from all viewing registers
   useEffect(() => {
-    if (!registers[activeRegister]?.cards) {
-      setCurrentEvents([]);
-      setUpcomingEvents([]);
-      return;
-    }
-
     const currentDay = getCurrentDayKey();
     const currentTimeMinutes = getCurrentTimeInMinutes();
     const allEvents: EventInfo[] = [];
 
-    // Extract all events for today from current register
-    registers[activeRegister].cards.forEach((card: CardInterface) => {
-      const todaySlots = card.days[currentDay] || [];
+    viewingRegisters.forEach(registerId => {
+      const register = registers[registerId];
+      if (!register?.cards) {
+        return;
+      }
 
-      todaySlots.forEach((slot: Slots, index: number) => {
-        const startMinutes = timeToMinutes(slot.start);
-        const endMinutes = timeToMinutes(slot.end);
+      // Extract all events for today from the current register
+      register.cards.forEach((card: CardInterface) => {
+        const todaySlots = card.days[currentDay] || [];
 
-        allEvents.push({
-          id: `${card.id}-${currentDay}-${index}`,
-          title: card.title,
-          startTime: slot.start,
-          endTime: slot.end,
-          roomName: slot.roomName || undefined,
-          color: card.tagColor,
-          cardId: card.id,
-          registerId: activeRegister,
-          isRunning:
-            currentTimeMinutes >= startMinutes &&
-            currentTimeMinutes <= endMinutes,
+        todaySlots.forEach((slot: Slots, index: number) => {
+          const startMinutes = timeToMinutes(slot.start);
+          const endMinutes = timeToMinutes(slot.end);
+
+          allEvents.push({
+            id: `${card.id}-${currentDay}-${index}-${registerId}`,
+            title: card.title,
+            startTime: slot.start,
+            endTime: slot.end,
+            roomName: slot.roomName || undefined,
+            color: card.tagColor,
+            cardId: card.id,
+            registerId: registerId,
+            isRunning:
+              currentTimeMinutes >= startMinutes &&
+              currentTimeMinutes <= endMinutes,
+          });
         });
       });
     });
@@ -116,7 +119,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
 
     setCurrentEvents(running);
     setUpcomingEvents(upcoming);
-  }, [registers, activeRegister, updatedAt]);
+  }, [registers, viewingRegisters, updatedAt]);
 
   // Navigate to card details
   const handleEventPress = (event: EventInfo) => {
