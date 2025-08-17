@@ -306,10 +306,22 @@ export const useStore = create<StoreState>()(
               newSelectedRegisters = [newActiveRegister];
             }
 
+            // Remove the deleted register from viewingRegisters
+            let newViewingRegisters = state.viewingRegisters.filter(
+              id => id !== registerId,
+            );
+            if (
+              newViewingRegisters.length === 0 &&
+              Object.keys(registers).length > 0
+            ) {
+              newViewingRegisters = [newActiveRegister];
+            }
+
             return {
               registers,
               activeRegister: newActiveRegister,
               selectedRegisters: newSelectedRegisters,
+              viewingRegisters: newViewingRegisters,
             };
           }
           return state;
