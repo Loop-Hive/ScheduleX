@@ -35,7 +35,7 @@ export class ExportScheduleUtility {
     return Object.keys(this.registers).map(key => parseInt(key, 10));
   }
 
-  private async exportSelectedRegistersCSV(checkOnly = false, overwrite = false): Promise<ExportResult | null> {
+  private async exportSelectedRegistersCSV(checkOnly = false, overwrite = false, customFileName?: string): Promise<ExportResult | null> {
     try {
       console.log('Starting export with selectedRegisters:', this.selectedRegisters);
       console.log('Available registers:', Object.keys(this.registers));
@@ -62,12 +62,9 @@ export class ExportScheduleUtility {
 
       console.log('Register list for export:', registerList);
 
-      if (registerList.length === 0) {
-        Alert.alert('Export Failed', 'No valid registers found for export.');
-        return null;
-      }
-
-      if (registerList.length === 1) {
+      if (customFileName && customFileName.trim().length > 0) {
+        fileName = customFileName.endsWith('.csv') ? customFileName : `${customFileName}.csv`;
+      } else if (registerList.length === 1) {
         fileName = `TimeTable_${registerList[0].name.replace(/\s+/g, '_')}.csv`;
       } else if (registerList.length === this.getAllRegisterIds().length) {
         fileName = `TimeTable_Grouped_All.csv`;
@@ -118,18 +115,18 @@ export class ExportScheduleUtility {
     }
   }
 
-  async saveToDevice(): Promise<void> {
-    const result = await this.exportSelectedRegistersCSV(true); // pass checkOnly flag
+  async saveToDevice(customFileName?: string): Promise<void> {
+    const result = await this.exportSelectedRegistersCSV(true, false, customFileName);
     if (result && result.exists) {
       Alert.alert(
         'File Exists',
         `File already exists in Downloads as ${result.fileName}. Download again?`,
         [
           { text: 'Cancel', style: 'cancel' },
-          { 
-            text: 'Yes', 
+          {
+            text: 'Yes',
             onPress: async () => {
-              await this.exportSelectedRegistersCSV(false, true); // force overwrite
+              await this.exportSelectedRegistersCSV(false, true, customFileName);
               ToastAndroid.show(
                 `Saved to Downloads: ${result.fileName}`,
                 ToastAndroid.SHORT
@@ -167,6 +164,14 @@ export class ExportScheduleUtility {
 export const saveScheduleToDevice = async ({ selectedRegisters, registers }: ExportUtilityProps): Promise<void> => {
   const exportUtil = new ExportScheduleUtility({ selectedRegisters, registers });
   await exportUtil.saveToDevice();
+};
+
+export const saveScheduleToDeviceWithName = async (
+  { selectedRegisters, registers }: ExportUtilityProps,
+  customFileName: string
+): Promise<void> => {
+  const exportUtil = new ExportScheduleUtility({ selectedRegisters, registers });
+  await exportUtil.saveToDevice(customFileName);
 };
 
 export const shareSchedule = async ({ selectedRegisters, registers }: ExportUtilityProps): Promise<void> => {
