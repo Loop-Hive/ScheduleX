@@ -1,5 +1,3 @@
-// src/screens/home/HomeScreen.tsx
-
 import React, {useState, useEffect} from 'react';
 import {
   View,
@@ -35,7 +33,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
   navigation,
   toggleSidebar,
 }: any) => {
-  const {registers, activeRegister, viewingRegisters, updatedAt} = useStore();
+  const {registers, activeRegister, updatedAt} = useStore();
   const [currentEvents, setCurrentEvents] = useState<EventInfo[]>([]);
   const [upcomingEvents, setUpcomingEvents] = useState<EventInfo[]>([]);
 
@@ -65,68 +63,60 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
     return now.getHours() * 60 + now.getMinutes();
   };
 
-  // Process events from all viewing registers
+  // Process events from current register
   useEffect(() => {
-    const processEvents = () => {
-      const currentDay = getCurrentDayKey();
-      const currentTimeMinutes = getCurrentTimeInMinutes();
-      const allEvents: EventInfo[] = [];
+    if (!registers[activeRegister]?.cards) {
+      setCurrentEvents([]);
+      setUpcomingEvents([]);
+      return;
+    }
 
-      // Ensure viewingRegisters is an array before processing
-      if (!Array.isArray(viewingRegisters)) {
-        return;
-      }
+    const currentDay = getCurrentDayKey();
+    const currentTimeMinutes = getCurrentTimeInMinutes();
+    const allEvents: EventInfo[] = [];
 
-      viewingRegisters.forEach(registerId => {
-        const register = registers[registerId];
-        // Ensure the register and its cards exist and are in the correct format
-        if (register && Array.isArray(register.cards)) {
-          register.cards.forEach((card: CardInterface) => {
-            const todaySlots = card.days[currentDay] || [];
+    // Extract all events for today from current register
+    registers[activeRegister].cards.forEach((card: CardInterface) => {
+      const todaySlots = card.days[currentDay] || [];
 
-            todaySlots.forEach((slot: Slots, index: number) => {
-              const startMinutes = timeToMinutes(slot.start);
-              const endMinutes = timeToMinutes(slot.end);
+      todaySlots.forEach((slot: Slots, index: number) => {
+        const startMinutes = timeToMinutes(slot.start);
+        const endMinutes = timeToMinutes(slot.end);
 
-              allEvents.push({
-                id: `${card.id}-${currentDay}-${index}-${registerId}`,
-                title: card.title,
-                startTime: slot.start,
-                endTime: slot.end,
-                roomName: slot.roomName || undefined,
-                color: card.tagColor,
-                cardId: card.id,
-                registerId: registerId,
-                isRunning:
-                  currentTimeMinutes >= startMinutes &&
-                  currentTimeMinutes <= endMinutes,
-              });
-            });
-          });
-        }
+        allEvents.push({
+          id: `${card.id}-${currentDay}-${index}`,
+          title: card.title,
+          startTime: slot.start,
+          endTime: slot.end,
+          roomName: slot.roomName || undefined,
+          color: card.tagColor,
+          cardId: card.id,
+          registerId: activeRegister,
+          isRunning:
+            currentTimeMinutes >= startMinutes &&
+            currentTimeMinutes <= endMinutes,
+        });
       });
+    });
 
-      // Sort events by start time
-      allEvents.sort(
-        (a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime),
-      );
+    // Sort events by start time
+    allEvents.sort(
+      (a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime),
+    );
 
-      // Separate current and upcoming events
-      const running = allEvents.filter(event => event.isRunning);
-      const upcoming = allEvents
-        .filter(
-          event =>
-            !event.isRunning &&
-            timeToMinutes(event.startTime) > currentTimeMinutes,
-        )
-        .slice(0, 2); // Next 2 upcoming events
+    // Separate current and upcoming events
+    const running = allEvents.filter(event => event.isRunning);
+    const upcoming = allEvents
+      .filter(
+        event =>
+          !event.isRunning &&
+          timeToMinutes(event.startTime) > currentTimeMinutes,
+      )
+      .slice(0, 2); // Next 2 upcoming events
 
-      setCurrentEvents(running);
-      setUpcomingEvents(upcoming);
-    };
-
-    processEvents();
-  }, [registers, viewingRegisters, updatedAt]);
+    setCurrentEvents(running);
+    setUpcomingEvents(upcoming);
+  }, [registers, activeRegister, updatedAt]);
 
   // Navigate to card details
   const handleEventPress = (event: EventInfo) => {
@@ -205,8 +195,9 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>No events scheduled for today</Text>
             <Text style={styles.emptySubtext}>
-              Please check that your selected registers have subjects scheduled
-              for today.
+              Add subjects to{' '}
+              {registers[activeRegister]?.name || 'your register'} to see your
+              schedule
             </Text>
           </View>
         )}
