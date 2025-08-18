@@ -34,9 +34,13 @@ A cross-platform **React Native** application designed to help you track attenda
 
 ## 📱 App Screenshots  
 
+<details>
+  <summary>Click to view screenshots</summary>
+
 | ![Image 1](./src/assets/screenshots/ss1.jpeg) | ![Image 2](./src/assets/screenshots/ss2.jpeg) | ![Image 3](./src/assets/screenshots/ss3.jpeg) |
 | --------------------------------------------- | --------------------------------------------- | --------------------------------------------- |
 | ![Image 4](./src/assets/screenshots/ss4.jpeg) | ![Image 5](./src/assets/screenshots/ss5.jpeg) | ![Image 6](./src/assets/screenshots/ss6.jpeg) |
+</details>
 
 ---
 
@@ -111,4 +115,10 @@ Thanks to these amazing people for their contributions ❤️
 
 <p align="center">
   ✨ <strong>Vibe • Coding • Imaginations</strong> ✨  
+</p>
+
+<p align="center">
+  <a href="#top" style="font-size: 16px; padding: 8px 16px; border: 1px solid #ccc; border-radius: 6px; text-decoration: none;">
+    ⬆️ Back to Top
+  </a>
 </p>
