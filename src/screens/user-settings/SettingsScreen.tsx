@@ -305,29 +305,6 @@ const SettingsScreen: React.FC = () => {
         </View>
       </View>
 
-      {/* Schedule View Section */}
-      <View style={styles.settingsSection}>
-        <Text style={styles.sectionTitle}>Schedule View</Text>
-        <Text style={styles.settingLabel}>Select Registers to View</Text>
-        <MultiSelect
-          items={registerOptions}
-          uniqueKey="id"
-          onSelectedItemsChange={(items) => setViewingRegisters(items.map(Number))}
-          selectedItems={viewingRegisters.map(String)}
-          selectText="Pick Registers"
-          searchInputPlaceholderText="Search Registers..."
-          tagRemoveIconColor="#EF4444"
-          tagTextColor="#9a4848ff"
-          selectedItemTextColor="#4CAF50"
-          selectedItemIconColor="#4CAF50"
-          itemTextColor="#bb5656ff"
-          displayKey="name"
-          searchInputStyle={{ color: '#e23939ff' }}
-          submitButtonColor="#4CAF50"
-          submitButtonText="Apply"
-          styleMainWrapper={{ backgroundColor: '#27272A', borderRadius: 12, padding: 10 }}
-        />
-      </View>
 
       {/* Notifications & Alerts Section */}
       <View style={styles.settingsSection}>
