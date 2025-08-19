@@ -1,3 +1,5 @@
+// src/screens/user-settings/SettingsScreen.tsx
+
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -17,7 +19,7 @@ import {
 import Slider from '@react-native-community/slider';
 import MultiSelect from 'react-native-multiple-select';
 import useStore from '../../store/store';
-import { saveScheduleToDevice, shareSchedule } from '../../utils/exportSchedule';
+import { saveScheduleToDevice, shareSchedule, saveScheduleToDeviceWithName } from '../../utils/exportSchedule';
 import pickCSVFile, { pickCSVFileRaw } from '../../utils/csv-picker';
 import { importAndAddToRegisterFromContent } from '../../utils/csv-import';
 
@@ -37,6 +39,8 @@ const SettingsScreen: React.FC = () => {
     registers,
     activeRegister,
     selectedRegisters,
+    viewingRegisters,
+    setViewingRegisters,
     setDefaultTargetPercentage,
     updateAllRegistersTargetPercentage,
     selectedSchedules,
@@ -54,7 +58,15 @@ const SettingsScreen: React.FC = () => {
   const [newTargetValue, setNewTargetValue] = useState(defaultTargetPercentage.toString());
   const [localLeadTime, setLocalLeadTime] = useState(notificationLeadTime);
   const [localSchedules, setLocalSchedules] = useState<string[]>(selectedSchedules);
+  // CSV filename modal state
+  const [showFileNameModal, setShowFileNameModal] = useState(false);
+  const [csvFileName, setCsvFileName] = useState('MySchedule');
+  const [isSaving, setIsSaving] = useState(false);
 
+  const registerOptions = Object.keys(registers).map(key => ({
+    id: key,
+    name: registers[parseInt(key)].name,
+  }));
   // Effects
   useEffect(() => {
     setAppVersion(packageJson.version);
@@ -103,33 +115,33 @@ const SettingsScreen: React.FC = () => {
   };
 
   // Export functionality handlers
-  const handleSaveScheduleToDevice = async () => {
+  // Show modal to enter filename
+  const handleSaveScheduleToDevice = () => {
+    setShowFileNameModal(true);
+  };
+
+  // Actually save with filename
+  const handleConfirmSaveFileName = async () => {
+    setIsSaving(true);
     try {
-      console.log('Starting save to device...');
-      console.log('Available registers:', Object.keys(registers));
-      console.log('Selected registers from store:', selectedRegisters);
-      
-      // Use all registers if no specific selection is available
-      const currentSelectedRegisters = selectedRegisters && selectedRegisters.length > 0 
-        ? selectedRegisters 
+      const currentSelectedRegisters = selectedRegisters && selectedRegisters.length > 0
+        ? selectedRegisters
         : Object.keys(registers).map(key => parseInt(key, 10));
-      
-      console.log('Using registers for export:', currentSelectedRegisters);
-      
       if (currentSelectedRegisters.length === 0) {
         Alert.alert('No Data', 'No registers found to export. Please create some schedules first.');
+        setIsSaving(false);
         return;
       }
-      
-      await saveScheduleToDevice({ 
-        selectedRegisters: currentSelectedRegisters, 
-        registers 
-      });
+      await saveScheduleToDeviceWithName({
+        selectedRegisters: currentSelectedRegisters,
+        registers
+      }, csvFileName);
+      setShowFileNameModal(false);
     } catch (error) {
-      console.error('Save to device error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       Alert.alert('Error', `Failed to save schedule to device: ${errorMessage}`);
     }
+    setIsSaving(false);
   };
 
   const handleShareSchedule = async () => {
@@ -137,22 +149,22 @@ const SettingsScreen: React.FC = () => {
       console.log('Starting share schedule...');
       console.log('Available registers:', Object.keys(registers));
       console.log('Selected registers from store:', selectedRegisters);
-      
+
       // Use all registers if no specific selection is available
-      const currentSelectedRegisters = selectedRegisters && selectedRegisters.length > 0 
-        ? selectedRegisters 
+      const currentSelectedRegisters = selectedRegisters && selectedRegisters.length > 0
+        ? selectedRegisters
         : Object.keys(registers).map(key => parseInt(key, 10));
-      
+
       console.log('Using registers for share:', currentSelectedRegisters);
-      
+
       if (currentSelectedRegisters.length === 0) {
         Alert.alert('No Data', 'No registers found to share. Please create some schedules first.');
         return;
       }
-      
-      await shareSchedule({ 
-        selectedRegisters: currentSelectedRegisters, 
-        registers 
+
+      await shareSchedule({
+        selectedRegisters: currentSelectedRegisters,
+        registers
       });
     } catch (error) {
       console.error('Share schedule error:', error);
@@ -164,7 +176,7 @@ const SettingsScreen: React.FC = () => {
   const handleImportSchedule = async () => {
     try {
       console.log('Starting CSV import...');
-      
+
       if (!registers[activeRegister]) {
         Alert.alert('Error', 'No active register found. Please create a register first.');
         return;
@@ -173,7 +185,7 @@ const SettingsScreen: React.FC = () => {
       // Use raw CSV content instead of parsed data
       const csvContent = await pickCSVFileRaw();
       console.log('Raw CSV Content received:', csvContent);
-      
+
       if (!csvContent) {
         console.log('No CSV content received (user cancelled or error)');
         return;
@@ -238,7 +250,6 @@ const SettingsScreen: React.FC = () => {
         <Text style={styles.infoValue}>{registerInfo.name}</Text>
         <Text style={styles.infoSubtext}>{registerInfo.totalCards} subjects</Text>
       </View>
-
       {/* Preferences Section */}
       <View style={styles.settingsSection}>
         <Text style={styles.sectionTitle}>Preferences</Text>
@@ -294,6 +305,7 @@ const SettingsScreen: React.FC = () => {
         </View>
       </View>
 
+
       {/* Notifications & Alerts Section */}
       <View style={styles.settingsSection}>
         <Text style={styles.sectionTitle}>Notifications & Alerts</Text>
@@ -333,16 +345,15 @@ const SettingsScreen: React.FC = () => {
         />
         <Button title="Save Settings" onPress={handleSave} color="#4CAF50" />
       </View>
-
       {/* Utilities Section */}
       <View style={styles.settingsSection}>
         <Text style={styles.sectionTitle}>Utilities</Text>
 
         <TouchableOpacity style={styles.utilityButton} onPress={handleSaveScheduleToDevice}>
           <View style={styles.utilityButtonContent}>
-            <Image 
-              source={require('../../assets/icons/save.png')} 
-              style={styles.utilityIcon} 
+            <Image
+              source={require('../../assets/icons/save.png')}
+              style={styles.utilityIcon}
             />
             <View style={styles.utilityTextContainer}>
               <Text style={styles.utilityButtonText}>Save Schedule to Device</Text>
@@ -350,12 +361,55 @@ const SettingsScreen: React.FC = () => {
             </View>
           </View>
         </TouchableOpacity>
+        {/* CSV Filename Modal */}
+        <Modal
+          visible={showFileNameModal}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setShowFileNameModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContainer}>
+              <Text style={styles.modalTitle}>Enter CSV Filename</Text>
+              <Text style={styles.modalSubtitle}>This will be the name of your exported CSV file.</Text>
+              <View style={styles.inputContainer}>
+                <TextInput
+                  style={styles.input}
+                  value={csvFileName}
+                  onChangeText={setCsvFileName}
+                  placeholder="Enter filename"
+                  placeholderTextColor="#71717A"
+                  maxLength={40}
+                  selectTextOnFocus={true}
+                  autoFocus={true}
+                />
+                <Text style={styles.percentSymbol}>.csv</Text>
+              </View>
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.cancelButton]}
+                  onPress={() => setShowFileNameModal(false)}
+                  disabled={isSaving}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.saveButton]}
+                  onPress={handleConfirmSaveFileName}
+                  disabled={isSaving || !csvFileName.trim()}
+                >
+                  <Text style={styles.saveButtonText}>{isSaving ? 'Saving...' : 'Save'}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
 
         <TouchableOpacity style={styles.utilityButton} onPress={handleShareSchedule}>
           <View style={styles.utilityButtonContent}>
-            <Image 
-              source={require('../../assets/icons/share.png')} 
-              style={styles.utilityIcon} 
+            <Image
+              source={require('../../assets/icons/share.png')}
+              style={styles.utilityIcon}
             />
             <View style={styles.utilityTextContainer}>
               <Text style={styles.utilityButtonText}>Share Schedule</Text>
@@ -366,9 +420,9 @@ const SettingsScreen: React.FC = () => {
 
         <TouchableOpacity style={styles.utilityButton} onPress={handleImportSchedule}>
           <View style={styles.utilityButtonContent}>
-            <Image 
-              source={require('../../assets/icons/export.png')} 
-              style={styles.utilityIcon} 
+            <Image
+              source={require('../../assets/icons/export.png')}
+              style={styles.utilityIcon}
             />
             <View style={styles.utilityTextContainer}>
               <Text style={styles.utilityButtonText}>Import Schedule from CSV</Text>
@@ -456,7 +510,6 @@ const SettingsScreen: React.FC = () => {
     </>
   );
 };
-
 // Styles
 const styles = StyleSheet.create({
   container: {
@@ -713,5 +766,4 @@ const styles = StyleSheet.create({
     color: '#A1A1AA',
   },
 });
-
 export default SettingsScreen;

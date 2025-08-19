@@ -1,3 +1,5 @@
+// src/store/store.ts
+
 import {create} from 'zustand';
 import {persist, createJSONStorage} from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -22,6 +24,7 @@ interface StoreState {
   updatedAt: Date | null;
   defaultTargetPercentage: number;
   selectedRegisters: number[];
+  viewingRegisters: number[]; // New state for global view
   setRegisters: (regNo: number, cardsData: CardInterface[]) => void;
   updateDate: (date: Date) => void;
   setDefaultTargetPercentage: (percentage: number) => void;
@@ -30,14 +33,15 @@ interface StoreState {
   changeCopyRegister: (registerId: number) => void;
   setActiveRegister: (registerId: number) => void;
   setSelectedRegisters: (selectedIds: number[]) => void;
-  
+  setViewingRegisters: (selectedIds: number[]) => void; // New action
+
   selectedSchedules: string[];
   setSelectedSchedules: (schedules: string[]) => void;
 
   // Notification Lead Time (in minutes)
   notificationLeadTime: number;
   setNotificationLeadTime: (time: number) => void;
-  
+
   addRegister: (registerId: number, registerName: string) => void;
   renameRegister: (registerId: number, registerName: string) => void;
   removeRegister: (registerId: number) => void;
@@ -141,26 +145,35 @@ export const useStore = create<StoreState>()(
       copyRegister: 0,
       updatedAt: null,
       defaultTargetPercentage: 75,
-      selectedRegisters: [0], // Initialize with default register
+      selectedRegisters: [0],
+      viewingRegisters: [0], // Initialize with the default active register
+
+      setViewingRegisters: (selectedIds: number[]) =>
+        set(() => ({
+          viewingRegisters: selectedIds,
+        })),
 
       changeCopyRegister: (registerId: number) =>
         set(() => ({
           copyRegister: registerId,
         })),
       selectedSchedules: ['all'],
-  setSelectedSchedules: (schedules: string[]) =>
-    set({ selectedSchedules: schedules }),
+      setSelectedSchedules: (schedules: string[]) =>
+        set({ selectedSchedules: schedules }),
 
-  // Lead time for notification (e.g., 10 minutes before)
-  notificationLeadTime: 10,
-  setNotificationLeadTime: (time: number) =>
-    set({ notificationLeadTime: time }),
+      // Lead time for notification (e.g., 10 minutes before)
+      notificationLeadTime: 10,
+      setNotificationLeadTime: (time: number) =>
+        set({ notificationLeadTime: time }),
 
       setActiveRegister: (registerId: number) =>
         set(state => ({
           activeRegister: registerId,
           // If no registers are selected, select the new active register
-          selectedRegisters: state.selectedRegisters.length === 0 ? [registerId] : state.selectedRegisters,
+          selectedRegisters:
+            state.selectedRegisters.length === 0
+              ? [registerId]
+              : state.selectedRegisters,
         })),
 
       setSelectedRegisters: (selectedIds: number[]) =>
@@ -198,10 +211,11 @@ export const useStore = create<StoreState>()(
             ...state.registers,
             [registerId]: {
               ...state.registers[registerId],
-              cards: state.registers[registerId]?.cards.map(card => ({
-                ...card,
-                target_percentage: percentage,
-              })) || [],
+              cards:
+                state.registers[registerId]?.cards.map(card => ({
+                  ...card,
+                  target_percentage: percentage,
+                })) || [],
             },
           },
         })),
@@ -267,7 +281,7 @@ export const useStore = create<StoreState>()(
 
       removeRegister: (registerId: number) =>
         set(state => {
-          const registers = {...state.registers};
+          const registers = { ...state.registers };
           if (registerId in registers) {
             const keys = Object.keys(registers)
               .map(Number)
@@ -282,15 +296,32 @@ export const useStore = create<StoreState>()(
               state.activeRegister === registerId ? 0 : state.activeRegister;
 
             // Remove the deleted register from selectedRegisters and ensure valid selection
-            let newSelectedRegisters = state.selectedRegisters.filter(id => id !== registerId);
-            if (newSelectedRegisters.length === 0 && Object.keys(registers).length > 0) {
+            let newSelectedRegisters = state.selectedRegisters.filter(
+              id => id !== registerId,
+            );
+            if (
+              newSelectedRegisters.length === 0 &&
+              Object.keys(registers).length > 0
+            ) {
               newSelectedRegisters = [newActiveRegister];
+            }
+
+            // Remove the deleted register from viewingRegisters
+            let newViewingRegisters = state.viewingRegisters.filter(
+              id => id !== registerId,
+            );
+            if (
+              newViewingRegisters.length === 0 &&
+              Object.keys(registers).length > 0
+            ) {
+              newViewingRegisters = [newActiveRegister];
             }
 
             return {
               registers,
               activeRegister: newActiveRegister,
               selectedRegisters: newSelectedRegisters,
+              viewingRegisters: newViewingRegisters,
             };
           }
           return state;
@@ -361,7 +392,12 @@ export const useStore = create<StoreState>()(
             },
           },
         })),
-      markAbsentWithDate: (date: Date, cardId: number, registerId: number, timeSlot?: string) =>
+      markAbsentWithDate: (
+        date: Date,
+        cardId: number,
+        registerId: number,
+        timeSlot?: string,
+      ) =>
         set(state => {
           const register = state.registers[registerId];
           const card = register.cards.find(
@@ -402,7 +438,12 @@ export const useStore = create<StoreState>()(
             updatedAt: new Date(),
           };
         }),
-      markPresentWithDate: (date: Date, cardId: number, registerId: number, timeSlot?: string) =>
+      markPresentWithDate: (
+        date: Date,
+        cardId: number,
+        registerId: number,
+        timeSlot?: string,
+      ) =>
         set(state => {
           const register = state.registers[registerId];
           const card = register.cards.find(
