@@ -69,13 +69,11 @@ A cross-platform **React Native** application designed to help you track attenda
 We’d love your help in improving this project!  
 📋 **[Contributing Guidelines](.github/CONTRIBUTING.md)**  
 
----
 
 ## 📜 Code of Conduct  
 
 🤝 **[Code of Conduct](.github/CODE_OF_CONDUCT.md)**  
 
----
 
 ## 🚀 Quick Start  
 
@@ -83,18 +81,14 @@ We’d love your help in improving this project!
 
 ---
 
-## 👑 Project Admin (GSSoC'25)  
+## ✨ Project Admin (GSSoC'25)  
 
 - **Anirudh Sharma** — [GitHub](https://github.com/anisharma07) — @anisharma07  
-
----
 
 ## 🎓 Mentors (GSSoC'25)  
 
 - **Irtesaam** — [GitHub](https://github.com/Irtesaam) — @Irtesaam  
 - **Nikhil Balamurugan** — [GitHub](https://github.com/Nikhil210206) — @Nikhil210206  
-
----
 
 ## 🏆 Contributors  
 
