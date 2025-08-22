@@ -81,12 +81,12 @@ We’d love your help in improving this project!
 
 ---
 
-## ✨ Project Admin (GSSoC'25)  
+## ✨ Maintainers (GSSoC'25)  
 
-- **Anirudh Sharma** — [GitHub](https://github.com/anisharma07) — @anisharma07  
+#### Project Admin
+- **Anirudh Sharma** — [GitHub](https://github.com/anisharma07) — @anisharma07 
 
-## 🎓 Mentors (GSSoC'25)  
-
+#### Mentors
 - **Irtesaam** — [GitHub](https://github.com/Irtesaam) — @Irtesaam  
 - **Nikhil Balamurugan** — [GitHub](https://github.com/Nikhil210206) — @Nikhil210206  
 
