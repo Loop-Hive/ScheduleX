@@ -44,6 +44,19 @@ A cross-platform **React Native** application designed to help you track attenda
 
 ---
 
+## 🎥 App Demo Videos  
+
+<details>
+  <summary>Click to view demo videos</summary>
+
+| **Timetable Generator Demo** | **Attendance Tracker Demo** |
+|------------------------------|------------------------------|
+| <video src="./src/assets/videos/demo1.mp4" controls width="250"></video> | <video src="./src/assets/videos/demo2.mp4" controls width="250"></video> |
+
+</details>
+
+---
+
 ## 📜 Assignments Note  
 
 | Level | Time to Complete | Note |
@@ -60,7 +73,6 @@ A cross-platform **React Native** application designed to help you track attenda
 - **Redux** - State management  
 - **AsyncStorage / Firebase** - Data persistence  
 - **React Navigation** - Seamless app navigation  
-
 
 ---
 
