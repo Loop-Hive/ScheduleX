@@ -51,9 +51,10 @@ A cross-platform **React Native** application designed to help you track attenda
 
 | **Timetable Generator Demo** | **Attendance Tracker Demo** |
 |------------------------------|------------------------------|
-| <video src="./src/assets/videos/demo1.mp4" controls width="250"></video> | <video src="./src/assets/videos/demo2.mp4" controls width="250"></video> |
+| ![Demo 1](./src/assets/videos/ww1.gif) | ![Demo 2](./src/assets/videos/ww2.gif) |
 
 </details>
+
 
 ---
 
