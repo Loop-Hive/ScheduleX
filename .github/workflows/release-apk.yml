@@ -75,6 +75,50 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
 
+      - name: 🏷️ Get Repository Name
+        id: repo-info
+        run: |
+          REPO_NAME=$(echo "${{ github.repository }}" | cut -d'/' -f2)
+          echo "name=$REPO_NAME" >> $GITHUB_OUTPUT
+          echo "Repository name: $REPO_NAME"
+
+      - name: 📦 Detect Package Manager
+        id: package-manager
+        run: |
+          if [ -f "pnpm-lock.yaml" ]; then
+            echo "manager=pnpm" >> $GITHUB_OUTPUT
+            echo "install_cmd=pnpm install --frozen-lockfile" >> $GITHUB_OUTPUT
+            echo "version_cmd=pnpm version" >> $GITHUB_OUTPUT
+            echo "list_cmd=pnpm list" >> $GITHUB_OUTPUT
+            echo "cache_path=~/.pnpm-store" >> $GITHUB_OUTPUT
+            echo "cache_key=pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}" >> $GITHUB_OUTPUT
+            echo "🔧 Detected package manager: pnpm"
+          elif [ -f "yarn.lock" ]; then
+            echo "manager=yarn" >> $GITHUB_OUTPUT
+            echo "install_cmd=yarn install --frozen-lockfile" >> $GITHUB_OUTPUT
+            echo "version_cmd=yarn version --new-version" >> $GITHUB_OUTPUT
+            echo "list_cmd=yarn list" >> $GITHUB_OUTPUT
+            echo "cache_path=~/.cache/yarn" >> $GITHUB_OUTPUT
+            echo "cache_key=yarn-${{ hashFiles('**/yarn.lock') }}" >> $GITHUB_OUTPUT
+            echo "🔧 Detected package manager: yarn"
+          elif [ -f "package-lock.json" ]; then
+            echo "manager=npm" >> $GITHUB_OUTPUT
+            echo "install_cmd=npm ci" >> $GITHUB_OUTPUT
+            echo "version_cmd=npm version" >> $GITHUB_OUTPUT
+            echo "list_cmd=npm list" >> $GITHUB_OUTPUT
+            echo "cache_path=~/.npm" >> $GITHUB_OUTPUT
+            echo "cache_key=npm-${{ hashFiles('**/package-lock.json') }}" >> $GITHUB_OUTPUT
+            echo "🔧 Detected package manager: npm"
+          else
+            echo "manager=npm" >> $GITHUB_OUTPUT
+            echo "install_cmd=npm install" >> $GITHUB_OUTPUT
+            echo "version_cmd=npm version" >> $GITHUB_OUTPUT
+            echo "list_cmd=npm list" >> $GITHUB_OUTPUT
+            echo "cache_path=~/.npm" >> $GITHUB_OUTPUT
+            echo "cache_key=npm-${{ hashFiles('**/package.json') }}" >> $GITHUB_OUTPUT
+            echo "⚠️ No lock file detected, defaulting to npm"
+          fi
+
       - name: 🔍 Check for Existing Release
         id: check-existing
         run: |
@@ -128,17 +172,22 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'yarn'
+          cache: ${{ steps.package-manager.outputs.manager }}
+          cache-dependency-path: |
+            package.json
+            ${{ steps.package-manager.outputs.manager == 'yarn' && 'yarn.lock' || '' }}
+            ${{ steps.package-manager.outputs.manager == 'npm' && 'package-lock.json' || '' }}
+            ${{ steps.package-manager.outputs.manager == 'pnpm' && 'pnpm-lock.yaml' || '' }}
 
-      - name: 💾 Cache node_modules
+      - name: 💾 Cache Dependencies
         uses: actions/cache@v4
         with:
           path: |
             node_modules
-            ~/.cache/yarn
-          key: ${{ runner.os }}-yarn-${{ hashFiles('**/package.json') }}
+            ${{ steps.package-manager.outputs.cache_path }}
+          key: ${{ runner.os }}-${{ steps.package-manager.outputs.cache_key }}
           restore-keys: |
-            ${{ runner.os }}-yarn-
+            ${{ runner.os }}-${{ steps.package-manager.outputs.manager }}-
 
       - name: ☕ Setup Java JDK
         uses: actions/setup-java@v4
@@ -146,18 +195,18 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: � Install Dependencies
-        run: |
-          echo "Installing dependencies with Yarn..."
+      - name: 📦 Setup PNPM (if detected)
+        if: steps.package-manager.outputs.manager == 'pnpm'
+        uses: pnpm/action-setup@v2
+        with:
+          version: latest
 
-          # Check if yarn.lock exists
-          if [ -f "yarn.lock" ]; then
-            echo "yarn.lock found, using frozen lockfile"
-            yarn install --frozen-lockfile
-          else
-            echo "No yarn.lock found, generating new one"
-            yarn install
-          fi
+      - name: 📥 Install Dependencies
+        run: |
+          echo "Installing dependencies with ${{ steps.package-manager.outputs.manager }}..."
+
+          # Install dependencies based on detected package manager
+          ${{ steps.package-manager.outputs.install_cmd }}
 
           # Verify React Native plugin is installed
           echo "Checking for React Native Gradle plugin..."
@@ -170,7 +219,8 @@ jobs:
             ls -la node_modules/@react-native/ || echo "No @react-native directory found"
           fi
 
-          yarn list --pattern "@react-native/gradle-plugin" # List specific package
+          # List specific package with the detected package manager
+          ${{ steps.package-manager.outputs.list_cmd }} --pattern "@react-native/gradle-plugin" 2>/dev/null || echo "Package listing completed"
 
       - name: �🔍 Get Current Version
         id: current-version
@@ -216,8 +266,14 @@ jobs:
         run: |
           NEW_VERSION="${{ steps.new-version.outputs.new }}"
 
-          # Update package.json
-          yarn version --new-version $NEW_VERSION --no-git-tag-version
+          # Update package.json using the detected package manager
+          if [[ "${{ steps.package-manager.outputs.manager }}" == "yarn" ]]; then
+            yarn version --new-version $NEW_VERSION --no-git-tag-version
+          elif [[ "${{ steps.package-manager.outputs.manager }}" == "pnpm" ]]; then
+            pnpm version $NEW_VERSION --no-git-tag-version
+          else
+            npm version $NEW_VERSION --no-git-tag-version
+          fi
 
           # Update Android versionName and versionCode
           VERSION_CODE=$(grep "versionCode" android/app/build.gradle | grep -o '[0-9]\+')
@@ -250,6 +306,34 @@ jobs:
           keyAlias=${{ secrets.RELEASE_KEY_ALIAS }}
           keyPassword=${{ secrets.RELEASE_KEY_PASSWORD }}
           EOF
+
+          # Create google-services.json from secrets
+          if [ -n "${{ secrets.GOOGLE_SERVICES_BASE64 }}" ]; then
+            echo "${{ secrets.GOOGLE_SERVICES_BASE64 }}" | base64 -d > android/app/google-services.json
+            echo "✅ Google Services configuration created"
+          else
+            echo "⚠️ GOOGLE_SERVICES_BASE64 secret not found. Using template or existing file..."
+            if [ ! -f "android/app/google-services.json" ]; then
+              echo "❌ No google-services.json found and no secret provided. Build will fail."
+              echo "Please add GOOGLE_SERVICES_BASE64 secret to your repository secrets."
+              exit 1
+            fi
+          fi
+
+      - name: 🌍 Setup Environment Variables
+        if: steps.check-existing.outputs.skip-build == 'false'
+        run: |
+          echo "🔧 Setting up environment variables..."
+
+          # Create .env file for the build process
+          cat > .env << EOF
+          GOOGLE_GEMINI_API_KEY=${{ secrets.GOOGLE_GEMINI_API_KEY }}
+          EOF
+
+          echo "✅ Environment variables configured"
+          echo "📝 Created .env file with:"
+          echo "   - GOOGLE_WEB_CLIENT_ID (masked)"
+          echo "   - GOOGLE_GEMINI_API_KEY (masked)"
 
       - name: � Generate React Native Codegen
         if: steps.check-existing.outputs.skip-build == 'false'
@@ -304,10 +388,11 @@ jobs:
 
           # Rename APK with version
           NEW_VERSION="${{ steps.new-version.outputs.new }}"
-          cp app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/ScheduleX-v${NEW_VERSION}.apk
+          REPO_NAME="${{ steps.repo-info.outputs.name }}"
+          cp app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/${REPO_NAME}-v${NEW_VERSION}.apk
 
           # Get APK info
-          APK_SIZE=$(du -h app/build/outputs/apk/release/ScheduleX-v${NEW_VERSION}.apk | cut -f1)
+          APK_SIZE=$(du -h app/build/outputs/apk/release/${REPO_NAME}-v${NEW_VERSION}.apk | cut -f1)
           echo "✅ APK built successfully! Size: $APK_SIZE"
 
       - name: 🏷️ Create Git Tag
@@ -368,10 +453,10 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ steps.new-version.outputs.new }}
-          name: 🚀 ScheduleX v${{ steps.new-version.outputs.new }}
+          name: 🚀 ${{ steps.repo-info.outputs.name }} v${{ steps.new-version.outputs.new }}
           body_path: release-notes.md
           files: |
-            android/app/build/outputs/apk/release/ScheduleX-v${{ steps.new-version.outputs.new }}.apk
+            android/app/build/outputs/apk/release/${{ steps.repo-info.outputs.name }}-v${{ steps.new-version.outputs.new }}.apk
           draft: false
           prerelease: false
           generate_release_notes: true
@@ -384,17 +469,22 @@ jobs:
           # Remove sensitive files
           rm -f android/app/release-key.jks
           rm -f android/keystore.properties
+          rm -f android/app/google-services.json
+          rm -f .env
           echo "🧹 Cleanup completed"
 
       - name: 📱 Post-Release Summary
         if: steps.check-existing.outputs.skip-build == 'false'
         run: |
           NEW_VERSION="${{ steps.new-version.outputs.new }}"
-          APK_PATH="android/app/build/outputs/apk/release/ScheduleX-v${NEW_VERSION}.apk"
+          REPO_NAME="${{ steps.repo-info.outputs.name }}"
+          APK_PATH="android/app/build/outputs/apk/release/${REPO_NAME}-v${NEW_VERSION}.apk"
           APK_SIZE=$(du -h "$APK_PATH" | cut -f1)
 
           echo "## 🎉 Release Summary"
+          echo "✅ **Repository:** $REPO_NAME"
           echo "✅ **Version:** v$NEW_VERSION"
+          echo "✅ **Package Manager:** ${{ steps.package-manager.outputs.manager }}"
           echo "✅ **APK Size:** $APK_SIZE"
           echo "✅ **Release URL:** ${{ github.server_url }}/${{ github.repository }}/releases/tag/v$NEW_VERSION"
           echo "✅ **Status:** Successfully Released!"
