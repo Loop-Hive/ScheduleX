@@ -40,12 +40,7 @@ export class ExportScheduleUtility {
       console.log('Starting export with selectedRegisters:', this.selectedRegisters);
       console.log('Available registers:', Object.keys(this.registers));
       
-      // Check storage permission first
-      const hasPermission = await this.checkStoragePermission();
-      if (!hasPermission) {
-        Alert.alert('Permission Denied', 'Storage permission is required to save CSV files.');
-        return null;
-      }
+  // No permission needed for app-specific external storage on Android 13+
       
       if (this.selectedRegisters.length === 0) {
         Alert.alert('Export Failed', 'No registers selected for export.');
@@ -86,16 +81,20 @@ export class ExportScheduleUtility {
         return null;
       }
 
-      const path = `${RNFS.DownloadDirectoryPath}/${fileName}`;
-      console.log('Export path:', path);
-      
-      // Ensure the directory exists
-      const dirPath = RNFS.DownloadDirectoryPath;
-      const dirExists = await RNFS.exists(dirPath);
+      // WhatsApp-like: Save in Android/media/com.schedulex/ScheduleX
+      console.log('RNFS.ExternalStorageDirectoryPath:', RNFS.ExternalStorageDirectoryPath);
+      const scheduleXDir = `${RNFS.ExternalStorageDirectoryPath}/Android/media/com.schedulex/ScheduleX`;
+      const dirExists = await RNFS.exists(scheduleXDir);
       if (!dirExists) {
-        await RNFS.mkdir(dirPath);
+        try {
+          await RNFS.mkdir(scheduleXDir);
+          console.log('Created folder:', scheduleXDir);
+        } catch (e) {
+          console.error('Error creating folder:', e);
+        }
       }
-      
+      const path = `${scheduleXDir}/${fileName}`;
+      console.log('Export path:', path);
       const exists = await RNFS.exists(path);
 
       if (checkOnly && exists) {

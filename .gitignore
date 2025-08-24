@@ -102,3 +102,5 @@ android/app/release-key.jks
 !.yarn/sdks
 !.yarn/versions
 yarn.lock
+
+.env
