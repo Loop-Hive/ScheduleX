@@ -48,24 +48,25 @@ A cross-platform **React Native** application designed to help you track attenda
 
 <details>
   <summary>Click to view demo videos</summary>
+  <div align="center">
 
-### 📌 Demo 1: Timetable Saving
-![Demo 1](./src/assets/videos/ww1.gif)
+  ### 📌 Demo 1: Timetable Saving  
+  <img src="./src/assets/videos/ww1.gif" alt="Demo 1" width="300px"/>  
 
-### 📌 Demo 2: Attendance Tracker
-![Demo 2](./src/assets/videos/ww2.gif)
+  ### 📌 Demo 2: Attendance Tracker  
+  <img src="./src/assets/videos/ww2.gif" alt="Demo 2" width="300px"/>  
 
-### 📌 Demo 3: AI Schedule Generator
-![Demo 3](./src/assets/videos/ww3.gif)
+  ### 📌 Demo 3: AI Schedule Generator  
+  <img src="./src/assets/videos/ww3.gif" alt="Demo 3" width="300px"/>  
 
-### 📌 Demo 4: Task Manager
-![Demo 4](./src/assets/videos/ww4.gif)
+  ### 📌 Demo 4: Task Manager  
+  <img src="./src/assets/videos/ww4.gif" alt="Demo 4" width="300px"/>  
 
-### 📌 Demo 5: Subject Management
-![Demo 5](./src/assets/videos/ww5.gif)
+  ### 📌 Demo 5: Subject Management  
+  <img src="./src/assets/videos/ww5.gif" alt="Demo 5" width="300px"/>  
 
-</details>
-
+  </div>
+  </details>
 
 ---
 
