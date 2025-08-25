@@ -132,16 +132,16 @@ export class ExportScheduleUtility {
             onPress: async () => {
               await this.exportSelectedRegistersCSV(false, true, customFileName); // force overwrite
               ToastAndroid.show(
-                `Saved to Storage: ${result.fileName}`,
-                ToastAndroid.SHORT
-              );
+              `Saved: ${result.fileName}\nPath: ${result.path}`,
+              ToastAndroid.LONG
+            );
             }
           }
         ]
       );
     } else if (result) {
       ToastAndroid.show(
-        `Saved to Downloads: ${result.fileName}`,
+        `Saved to Storage: ${result.fileName}`,
         ToastAndroid.SHORT
       );
     }
