@@ -141,7 +141,7 @@ export class ExportScheduleUtility {
       );
     } else if (result) {
       ToastAndroid.show(
-        `Saved to Storage: ${result.fileName}`,
+        `Saved: ${result.fileName}\nPath: ${result.path}`,
         ToastAndroid.SHORT
       );
     }
