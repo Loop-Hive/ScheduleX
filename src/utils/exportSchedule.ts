@@ -124,7 +124,7 @@ export class ExportScheduleUtility {
     if (result && result.exists) {
       Alert.alert(
         'File Exists',
-        `File already exists in Downloads as ${result.fileName}. Download again?`,
+        `File already exists as ${result.fileName}. Download again?`,
         [
           { text: 'Cancel', style: 'cancel' },
           { 
@@ -132,7 +132,7 @@ export class ExportScheduleUtility {
             onPress: async () => {
               await this.exportSelectedRegistersCSV(false, true, customFileName); // force overwrite
               ToastAndroid.show(
-                `Saved to Downloads: ${result.fileName}`,
+                `Saved to Storage: ${result.fileName}`,
                 ToastAndroid.SHORT
               );
             }
