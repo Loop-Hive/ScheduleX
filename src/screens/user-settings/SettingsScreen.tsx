@@ -357,7 +357,7 @@ const SettingsScreen: React.FC = () => {
             />
             <View style={styles.utilityTextContainer}>
               <Text style={styles.utilityButtonText}>Save Schedule to Device</Text>
-              <Text style={styles.utilityButtonDescription}>Save your schedule as CSV to Downloads</Text>
+              <Text style={styles.utilityButtonDescription}>Save your schedule as CSV</Text>
             </View>
           </View>
         </TouchableOpacity>
