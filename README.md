@@ -124,6 +124,10 @@ Thanks to these amazing people for their contributions ❤️
   <img src="https://contrib.rocks/image?repo=Loop-Hive/ScheduleX" />
 </a>  
 
+### 📊 GSSoC'25 Contribution Reports
+Generate detailed contribution reports for GSSoC'25 participants! 
+📋 **[How to Generate Reports](.github/CONTRIBUTION_REPORT_GUIDE.md)**
+
 ---
 
 ## 📩 Need Help?  

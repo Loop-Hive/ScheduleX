@@ -49,10 +49,11 @@ Welcomes new contributors and provides guidance.
 
 ## 📚 Documentation
 
-| File                                         | Description                                     |
-| -------------------------------------------- | ----------------------------------------------- |
-| [`RELEASE_WORKFLOW.md`](RELEASE_WORKFLOW.md) | Complete guide for the automated release system |
-| [`SECRETS_SETUP.md`](SECRETS_SETUP.md)       | Quick setup guide for GitHub Secrets            |
+| File                                                    | Description                                        |
+| ------------------------------------------------------- | -------------------------------------------------- |
+| [`RELEASE_WORKFLOW.md`](RELEASE_WORKFLOW.md)           | Complete guide for the automated release system   |
+| [`SECRETS_SETUP.md`](SECRETS_SETUP.md)                 | Quick setup guide for GitHub Secrets              |
+| [`CONTRIBUTION_REPORT_GUIDE.md`](CONTRIBUTION_REPORT_GUIDE.md) | Guide for generating GSSoC'25 contribution reports |
 
 ## 🚀 Quick Start for Releases
 
