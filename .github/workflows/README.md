@@ -24,7 +24,26 @@ Automatically builds and releases signed APK files when PRs with release trigger
 - 🔄 Re-triggerable by adding labels to closed PRs
 - 🚫 Duplicate release prevention
 
-### 2. **Welcome Workflow** (`welcome.yml`)
+### 2. **GSSoC'25 Contribution Report** (`contribution-report.yml`)
+
+Generates comprehensive contribution reports for GSSoC'25 participants based on PRs with the `gssoc25` label.
+
+**Triggers:**
+
+- Manual trigger via workflow_dispatch
+- Configurable time filters (1 day, 1 week, 1 month, 90 days, 6 months, 1 year)
+- Multiple output formats (Markdown, JSON, CSV)
+
+**Features:**
+
+- 📊 Contributor statistics and rankings
+- 📅 Pull request timeline analysis
+- 🏷️ Label distribution statistics
+- 📁 Downloadable report artifacts
+- 👥 Unique contributor identification
+- 📈 Contribution trends over time
+
+### 3. **Welcome Workflow** (`welcome.yml`)
 
 Welcomes new contributors and provides guidance.
 
@@ -54,6 +73,22 @@ Welcomes new contributors and provides guidance.
    - Add `release` label to any already-merged PR
    - Workflow will re-run if no existing release found
    - Duplicate releases are automatically prevented
+
+## 📊 Quick Start for Contribution Reports
+
+1. **Navigate to Actions Tab**
+   - Go to GitHub Actions in your repository
+   - Find "Generate Contribution Report" workflow
+
+2. **Run Workflow Manually**
+   - Click "Run workflow" button
+   - Select time period (1 day, 1 week, 1 month, 90 days, 6 months, 1 year)
+   - Choose output format (Markdown, JSON, CSV)
+
+3. **Download Report**
+   - Wait for workflow completion
+   - Download the generated report from artifacts section
+   - Report includes contributor statistics, PR timeline, and label analysis
 
 ## 🎯 Version Bump Examples
 
