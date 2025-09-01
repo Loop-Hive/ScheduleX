@@ -236,16 +236,18 @@ const SettingsScreen: React.FC = () => {
   const renderSettings = () => (
     <View style={styles.contentContainer}>
       {/* Header */}
-      <View style={styles.headerContainer}>
-        <Image
-          source={require('../../assets/icons/navigation/settings.png')}
-          style={styles.headerIcon}
-        />
-        <Text style={styles.headerText}>Settings</Text>
+      <View style={styles.card}>
+        <View style={styles.headerContainer}>
+          <Image
+            source={require('../../assets/icons/navigation/settings.png')}
+            style={styles.headerIcon}
+          />
+          <Text style={styles.headerText}>Settings</Text>
+        </View>
       </View>
 
       {/* Current Register Info */}
-      <View style={styles.infoCard}>
+      <View style={styles.card}>
         <Text style={styles.infoTitle}>Current Register</Text>
         <Text style={styles.infoValue}>{registerInfo.name}</Text>
         <Text style={styles.infoSubtext}>{registerInfo.totalCards} subjects</Text>
@@ -307,7 +309,7 @@ const SettingsScreen: React.FC = () => {
 
 
       {/* Notifications & Alerts Section */}
-      <View style={styles.settingsSection}>
+      <View style={styles.card}>
         <Text style={styles.sectionTitle}>Notifications & Alerts</Text>
 
         <Text style={styles.settingLabel}>Select Schedules for Alerts</Text>
@@ -327,26 +329,31 @@ const SettingsScreen: React.FC = () => {
           searchInputStyle={{ color: '#e23939ff' }}
           submitButtonColor="#4CAF50"
           submitButtonText="Apply"
-          styleMainWrapper={{ backgroundColor: '#27272A', borderRadius: 12, padding: 10 }}
+          styleMainWrapper={{ backgroundColor: 'transparent', borderWidth: 0, padding: 0, marginVertical: 10 }}
         />
 
-        <Text style={[styles.settingLabel, { marginTop: 20 }]}>
-          Notify Before: {localLeadTime} minute{localLeadTime !== 1 ? 's' : ''}
-        </Text>
-        <Slider
-          minimumValue={5}
-          maximumValue={60}
-          step={5}
-          value={localLeadTime}
-          onValueChange={setLocalLeadTime}
-          minimumTrackTintColor="#4CAF50"
-          maximumTrackTintColor="#71717A"
-          thumbTintColor="#4CAF50"
-        />
-        <Button title="Save Settings" onPress={handleSave} color="#4CAF50" />
+        <View style={styles.sliderContainer}>
+          <Text style={[styles.settingLabel, { marginBottom: 16 }]}>
+            Notify Before: {localLeadTime} minute{localLeadTime !== 1 ? 's' : ''}
+          </Text>
+          <Slider
+            minimumValue={5}
+            maximumValue={60}
+            step={5}
+            value={localLeadTime}
+            onValueChange={setLocalLeadTime}
+            minimumTrackTintColor="#4CAF50"
+            maximumTrackTintColor="#71717A"
+            thumbTintColor="#4CAF50"
+            style={{ height: 40 }}
+          />
+        </View>
+        <TouchableOpacity style={styles.button} onPress={handleSave}>
+          <Text style={styles.buttonText}>Save Settings</Text>
+        </TouchableOpacity>
       </View>
       {/* Utilities Section */}
-      <View style={styles.settingsSection}>
+      <View style={styles.card}>
         <Text style={styles.sectionTitle}>Utilities</Text>
 
         <TouchableOpacity style={styles.utilityButton} onPress={handleSaveScheduleToDevice}>
@@ -357,7 +364,7 @@ const SettingsScreen: React.FC = () => {
             />
             <View style={styles.utilityTextContainer}>
               <Text style={styles.utilityButtonText}>Save Schedule to Device</Text>
-              <Text style={styles.utilityButtonDescription}>Save your schedule as CSV to Downloads</Text>
+              <Text style={styles.utilityButtonDescription}>Save your schedule to Device</Text>
             </View>
           </View>
         </TouchableOpacity>
@@ -433,7 +440,7 @@ const SettingsScreen: React.FC = () => {
       </View>
 
       {/* Data Management */}
-      <View style={styles.settingsSection}>
+      <View style={styles.card}>
         <Text style={styles.sectionTitle}>Data Management</Text>
 
         <TouchableOpacity style={[styles.actionButton, styles.dangerButton]} onPress={clearAllData}>
@@ -443,7 +450,7 @@ const SettingsScreen: React.FC = () => {
       </View>
 
       {/* About Section */}
-      <View style={styles.infoSection}>
+      <View style={styles.card}>
         <Text style={styles.sectionTitle}>About</Text>
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>Version</Text>
@@ -514,17 +521,19 @@ const SettingsScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#18181B',
+    backgroundColor: '#18181B', // fallback for gradient
+    // For gradient, use a wrapper View with a gradient component in JSX if needed
   },
   contentContainer: {
-    padding: 20,
-    paddingBottom: 70,
+    padding: 24,
+    paddingBottom: 100,
+    paddingTop: 16,
   },
   headerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 30,
-    paddingVertical: 15,
+    marginBottom: 0,
+    paddingVertical: 0,
   },
   headerIcon: {
     width: 28,
@@ -533,17 +542,23 @@ const styles = StyleSheet.create({
     tintColor: '#f5f5f5',
   },
   headerText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#642929ff',
+  fontSize: 26,
+  fontWeight: 'bold',
+  color: '#f5f5f5',
+  letterSpacing: 0.7,
   },
   infoCard: {
     backgroundColor: '#27272A',
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 25,
+    borderRadius: 18,
+    padding: 24,
+    marginBottom: 28,
     borderWidth: 1,
     borderColor: '#3F3F46',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 6,
   },
   infoTitle: {
     fontSize: 14,
@@ -567,31 +582,41 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#844c4cff',
-    marginBottom: 15,
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#F5F5F5',
+    marginBottom: 20,
+    letterSpacing: 0.8,
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   settingItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: '#27272A',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
     borderWidth: 1,
     borderColor: '#3F3F46',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 3,
   },
   settingInfo: {
     flex: 1,
     marginRight: 15,
   },
   settingLabel: {
-    fontSize: 16,
-    fontWeight: '500',
+    fontSize: 17,
+    fontWeight: '600',
     color: '#f5f5f5',
     marginBottom: 4,
+    letterSpacing: 0.3,
   },
   settingDescription: {
     fontSize: 14,
@@ -599,11 +624,16 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     backgroundColor: '#27272A',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 14,
     borderWidth: 1,
     borderColor: '#3F3F46',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.10,
+    shadowRadius: 6,
+    elevation: 4,
   },
   dangerButton: {
     borderColor: '#DC2626',
@@ -630,11 +660,16 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: '#27272A',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 8,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 10,
     borderWidth: 1,
     borderColor: '#3F3F46',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 3,
   },
   infoLabel: {
     fontSize: 16,
@@ -662,12 +697,17 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     backgroundColor: '#27272A',
-    borderRadius: 16,
-    padding: 24,
-    width: '85%',
-    maxWidth: 400,
+    borderRadius: 20,
+    padding: 28,
+    width: '88%',
+    maxWidth: 420,
     borderWidth: 1,
     borderColor: '#3F3F46',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 12,
   },
   modalTitle: {
     fontSize: 20,
@@ -735,20 +775,25 @@ const styles = StyleSheet.create({
   },
   // Utility button styles
   utilityButton: {
-    backgroundColor: '#27272A',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    backgroundColor: '#232323',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
     borderWidth: 1,
     borderColor: '#3F3F46',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
   },
   utilityButtonContent: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   utilityIcon: {
-    width: 24,
-    height: 24,
+    width: 28,
+    height: 28,
     marginRight: 16,
     tintColor: '#8B5CF6',
   },
@@ -764,6 +809,45 @@ const styles = StyleSheet.create({
   utilityButtonDescription: {
     fontSize: 14,
     color: '#A1A1AA',
+  },
+  card: {
+  backgroundColor: '#232323',
+  borderRadius: 22,
+  padding: 28,
+  marginBottom: 36,
+  borderWidth: 1,
+  borderColor: '#3F3F46',
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 6 },
+  shadowOpacity: 0.18,
+  shadowRadius: 12,
+  elevation: 8,
+  },
+  button: {
+    backgroundColor: '#4CAF50',
+    borderRadius: 16,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 22,
+    shadowColor: '#4CAF50',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  sliderContainer: {
+    backgroundColor: '#1F1F23',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: '#3F3F46',
   },
 });
 export default SettingsScreen;
