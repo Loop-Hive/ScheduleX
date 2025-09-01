@@ -44,6 +44,33 @@ A cross-platform **React Native** application designed to help you track attenda
 
 ---
 
+## 🎥 App Demo Videos  
+
+<details>
+  <summary>Click to view demo videos</summary>
+  <div align="center">
+
+ ### 📌 Demo 1: Attendance Tracker  
+  <img src="./src/assets/videos/ww2a.gif" alt="Attendance Tracker" width="300px"/>  
+
+  ### 📌 Demo 2: AI Schedule Generator  
+  <img src="./src/assets/videos/ww6.gif" alt="AI Schedule Generator" width="300px"/>  
+
+  ### 📌 Demo 3: Subject Management  
+  <img src="./src/assets/videos/ww3.gif" alt="Subject Management" width="300px"/>  
+
+  ### 📌 Demo 4: Timetable Saving  
+  <img src="./src/assets/videos/ww1a.gif" alt="Timetable Saving" width="300px"/>  
+
+  ### 📌 Demo 5: Task Manager  
+  <img src="./src/assets/videos/ww5.gif" alt="Task Manager" width="300px"/>  
+
+
+  </div>
+  </details>
+
+---
+
 ## 📜 Assignments Note  
 
 | Level | Time to Complete | Note |
@@ -61,7 +88,6 @@ A cross-platform **React Native** application designed to help you track attenda
 - **AsyncStorage / Firebase** - Data persistence  
 - **React Navigation** - Seamless app navigation  
 
-
 ---
 
 ## 🤝 Contributing  
@@ -69,13 +95,11 @@ A cross-platform **React Native** application designed to help you track attenda
 We’d love your help in improving this project!  
 📋 **[Contributing Guidelines](.github/CONTRIBUTING.md)**  
 
----
 
 ## 📜 Code of Conduct  
 
 🤝 **[Code of Conduct](.github/CODE_OF_CONDUCT.md)**  
 
----
 
 ## 🚀 Quick Start  
 
@@ -83,18 +107,14 @@ We’d love your help in improving this project!
 
 ---
 
-## 👑 Project Admin (GSSoC'25)  
+## ✨ Maintainers (GSSoC'25)  
 
-- **Anirudh Sharma** — [GitHub](https://github.com/anisharma07) — @anisharma07  
+#### Project Admin
+- **Anirudh Sharma** — [GitHub](https://github.com/anisharma07) — @anisharma07 
 
----
-
-## 🎓 Mentors (GSSoC'25)  
-
+#### Mentors
 - **Irtesaam** — [GitHub](https://github.com/Irtesaam) — @Irtesaam  
 - **Nikhil Balamurugan** — [GitHub](https://github.com/Nikhil210206) — @Nikhil210206  
-
----
 
 ## 🏆 Contributors  
 
