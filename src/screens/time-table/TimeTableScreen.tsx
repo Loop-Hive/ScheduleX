@@ -6,6 +6,7 @@ import {
   Text,
   TouchableOpacity,
   Image,
+  ScrollView,
 } from 'react-native';
 import TimeTable from './components/TimeTable';
 import useStore from '../../store/store';
@@ -223,6 +224,7 @@ const TimeTableScreen: React.FC<TimeTableScreenProps> = ({
                   </Text>
                 </View>
               </TouchableOpacity>
+              <ScrollView style={{ maxHeight: 160 }}>
               {getAllRegisterIds().map(registerId => (
                 <TouchableOpacity
                   key={registerId}
@@ -257,6 +259,7 @@ const TimeTableScreen: React.FC<TimeTableScreenProps> = ({
                   </View>
                 </TouchableOpacity>
               ))}
+              </ScrollView>
             </View>
           )}
         </View>
