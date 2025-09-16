@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -14,14 +14,14 @@ import {
   Switch,
 } from 'react-native';
 import useStore from '../../store/store';
-import {Days, CardInterface, Slots, Markings} from '../../types/cards';
-import {Picker} from '@react-native-picker/picker';
+import { Days, CardInterface, Slots, Markings } from '../../types/cards';
+import { Picker } from '@react-native-picker/picker';
 import {
   convertTo24Hrs,
   convertToStartSeconds,
   convertToUTM,
 } from '../../utils/functions';
-import {getTextColorForBackground} from '../../types/allCardConstraint';
+import { getTextColorForBackground } from '../../types/allCardConstraint';
 // import Calendar from '../components/Calendar';
 import TimePicker from '../../components/TimePicker';
 import TagColorPicker from '../../components/TagColorPicker';
@@ -49,9 +49,9 @@ interface currDayTimeProps {
   classroom: string;
 }
 
-const EditCard: React.FC = ({navigation, route}: any) => {
-  const {card_register, card_id} = route.params;
-  const {editCard, registers, defaultTargetPercentage} = useStore();
+const EditCard: React.FC = ({ navigation, route }: any) => {
+  const { card_register, card_id } = route.params;
+  const { editCard, registers, defaultTargetPercentage } = useStore();
   const [currDayTime, setCurrDayTime] = useState<currDayTimeProps>({
     day: 'mon',
     startTime: '10:00',
@@ -198,9 +198,9 @@ const EditCard: React.FC = ({navigation, route}: any) => {
     const isNew = card.days[currDayTime.day].findIndex(
       dayTime =>
         dayTime.start ===
-          convertTo24Hrs(currDayTime.startTime, currDayTime.isAM_start) &&
+        convertTo24Hrs(currDayTime.startTime, currDayTime.isAM_start) &&
         dayTime.end ===
-          convertTo24Hrs(currDayTime.endTime, currDayTime.isAM_end),
+        convertTo24Hrs(currDayTime.endTime, currDayTime.isAM_end),
     );
     if (isNew !== -1) {
       Alert.alert('Error', 'Slot already exists!');
@@ -371,457 +371,459 @@ const EditCard: React.FC = ({navigation, route}: any) => {
               };
 
               editCard(card_register, editedCard, card_id);
-              navigation.navigate('App');
+
+              navigation.goBack();
+
               if (Platform.OS === 'android') {
                 ToastAndroid.show('Changes Saved', ToastAndroid.SHORT);
               }
             },
           },
         ],
-        {cancelable: false},
+        { cancelable: false },
       );
     } else {
       editCard(card_register, finalCard, card_id);
 
-      navigation.navigate('App');
+      navigation.goBack();
+
       if (Platform.OS === 'android') {
         ToastAndroid.show('Changes Saved', ToastAndroid.SHORT);
       }
     }
-  };
-  const handleNavigateBack = () => {
-    navigation.goBack();
-  };
+    const handleNavigateBack = () => {
+      navigation.goBack();
+    };
 
-  // Helper function to get the most recent classroom from existing slots
-  const getMostRecentClassroom = () => {
-    const allSlots = Object.values(card.days).flat();
-    // Find the last slot with a classroom
-    for (let i = allSlots.length - 1; i >= 0; i--) {
-      if (allSlots[i].roomName) {
-        return allSlots[i].roomName;
+    // Helper function to get the most recent classroom from existing slots
+    const getMostRecentClassroom = () => {
+      const allSlots = Object.values(card.days).flat();
+      // Find the last slot with a classroom
+      for (let i = allSlots.length - 1; i >= 0; i--) {
+        if (allSlots[i].roomName) {
+          return allSlots[i].roomName;
+        }
       }
-    }
-    // If no slots have classroom, check defaultClassroom
-    return card.defaultClassroom || '';
-  };
+      // If no slots have classroom, check defaultClassroom
+      return card.defaultClassroom || '';
+    };
 
-  // Update classroom field when card data changes (for editing)
-  useEffect(() => {
-    if (card.id !== 1) { // Only for existing cards, not new ones
-      const recentClassroom = getMostRecentClassroom();
-      if (recentClassroom && currDayTime.classroom === '') {
-        setCurrDayTime(prev => ({
-          ...prev,
-          classroom: recentClassroom,
-        }));
+    // Update classroom field when card data changes (for editing)
+    useEffect(() => {
+      if (card.id !== 1) { // Only for existing cards, not new ones
+        const recentClassroom = getMostRecentClassroom();
+        if (recentClassroom && currDayTime.classroom === '') {
+          setCurrDayTime(prev => ({
+            ...prev,
+            classroom: recentClassroom,
+          }));
+        }
       }
-    }
-  }, [card]);
+    }, [card]);
 
-  return (
-    <View style={styles.topContainer}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={handleNavigateBack}>
-          <Image
-            source={require('../../assets/images/back-btn.png')}
-            style={styles.iconsStyle}
+    return (
+      <View style={styles.topContainer}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={handleNavigateBack}>
+            <Image
+              source={require('../../assets/images/back-btn.png')}
+              style={styles.iconsStyle}
+            />
+          </TouchableOpacity>
+          <Text style={styles.registerName}>
+            {registerName.length > 15
+              ? registerName.substring(0, 15) + '..'
+              : registerName}
+          </Text>
+          <View style={styles.functionButtons}>
+            <TouchableOpacity onPress={handleClearCard} style={styles.clearCard}>
+              <Text style={styles.saveBtnTxt}>Clear</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleSubmit} style={styles.saveCard}>
+              <Text style={styles.saveBtnTxt}>Save</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+        <View>
+          <Text style={styles.addCourseTxt}>Edit {card.title}</Text>
+        </View>
+
+        <ScrollView style={styles.container}>
+          <Text style={styles.label}>Title</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter title"
+            placeholderTextColor="#999"
+            value={card.title}
+            onChangeText={value => handleInputChange('title', value)}
           />
-        </TouchableOpacity>
-        <Text style={styles.registerName}>
-          {registerName.length > 15
-            ? registerName.substring(0, 15) + '..'
-            : registerName}
-        </Text>
-        <View style={styles.functionButtons}>
-          <TouchableOpacity onPress={handleClearCard} style={styles.clearCard}>
-            <Text style={styles.saveBtnTxt}>Clear</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={handleSubmit} style={styles.saveCard}>
-            <Text style={styles.saveBtnTxt}>Save</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-      <View>
-        <Text style={styles.addCourseTxt}>Edit {card.title}</Text>
-      </View>
+          <View style={styles.markings}>
+            <View style={styles.presentTotalBlock}>
+              <Text style={styles.label}>Present</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter present count"
+                placeholderTextColor="#999"
+                keyboardType="numeric"
+                value={card.present.toString()}
+                onChangeText={value =>
+                  handleInputChange('present', Number(value) || 0)
+                }
+              />
+            </View>
 
-      <ScrollView style={styles.container}>
-        <Text style={styles.label}>Title</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter title"
-          placeholderTextColor="#999"
-          value={card.title}
-          onChangeText={value => handleInputChange('title', value)}
-        />
-        <View style={styles.markings}>
-          <View style={styles.presentTotalBlock}>
-            <Text style={styles.label}>Present</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter present count"
-              placeholderTextColor="#999"
-              keyboardType="numeric"
-              value={card.present.toString()}
-              onChangeText={value =>
-                handleInputChange('present', Number(value) || 0)
-              }
-            />
+            <View style={styles.presentTotalBlock}>
+              <Text style={styles.label}>Total</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter total count"
+                placeholderTextColor="#999"
+                keyboardType="numeric"
+                value={card.total.toString()}
+                onChangeText={value =>
+                  handleInputChange('total', Number(value) || 0)
+                }
+              />
+            </View>
           </View>
 
-          <View style={styles.presentTotalBlock}>
-            <Text style={styles.label}>Total</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter total count"
-              placeholderTextColor="#999"
-              keyboardType="numeric"
-              value={card.total.toString()}
-              onChangeText={value =>
-                handleInputChange('total', Number(value) || 0)
-              }
-            />
-          </View>
-        </View>
+          <Text style={styles.label}>Target Percentage</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter target percentage"
+            placeholderTextColor="#999"
+            keyboardType="numeric"
+            value={card.target_percentage.toString()}
+            onChangeText={value =>
+              handleInputChange('target_percentage', Number(value) || 0)
+            }
+          />
 
-        <Text style={styles.label}>Target Percentage</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter target percentage"
-          placeholderTextColor="#999"
-          keyboardType="numeric"
-          value={card.target_percentage.toString()}
-          onChangeText={value =>
-            handleInputChange('target_percentage', Number(value) || 0)
-          }
-        />
+          <Text style={styles.label}>Classroom</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter classroom (optional)"
+            placeholderTextColor="#999"
+            value={currDayTime.classroom}
+            onChangeText={setClassroom}
+          />
 
-        <Text style={styles.label}>Classroom</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter classroom (optional)"
-          placeholderTextColor="#999"
-          value={currDayTime.classroom}
-          onChangeText={setClassroom}
-        />
+          <Text style={styles.label}>Add Slots</Text>
+          <View style={styles.pickWrapper}>
+            <View style={styles.pickerView}>
+              <Picker
+                selectedValue={currDayTime.day}
+                onValueChange={(day: keyof Days) => handleDayChange(day)}
+                style={styles.picker}>
+                {daysOfWeek.map(day => (
+                  <Picker.Item key={day} label={daysOfWeekMap[day]} value={day} />
+                ))}
+              </Picker>
+            </View>
+          </View>
+          <View style={styles.timePicker}>
+            <View style={styles.timePickerSub}>
+              <TimePicker
+                timeString={currDayTime.startTime}
+                isAM={currDayTime.isAM_start}
+                changeIsAM={setStartAm}
+                changeTimeString={setStartTime}
+              />
+              <Text style={styles.label}>to</Text>
+              <TimePicker
+                timeString={currDayTime.endTime}
+                isAM={currDayTime.isAM_end}
+                changeIsAM={setEndAm}
+                changeTimeString={setEndTime}
+              />
+            </View>
+            <TouchableOpacity
+              style={styles.addTimeBtn}
+              onPress={() => handleAddTime()}>
+              <Text style={styles.addSlotTxt}>Add</Text>
+            </TouchableOpacity>
+          </View>
+          <ScrollView
+            horizontal
+            contentContainerStyle={styles.tabContainer}
+            showsHorizontalScrollIndicator={false}
+            style={styles.scrollView}>
+            {Object.keys(card.days).map(day =>
+              card.days[day as keyof Days].map((dayTime: Slots, index) => (
+                <View key={index} style={styles.tabViewStyle}>
+                  <TouchableOpacity
+                    key={dayTime.start}
+                    style={styles.tabButton}
+                  >
+                    <Text style={styles.tabLabel}>
+                      {daysOfWeekMap[day].substring(0, 3)},{' '}
+                      {convertToUTM(dayTime.start)}
+                      {' - '}
+                      {convertToUTM(dayTime.end)}
+                      {dayTime.roomName && `, ${dayTime.roomName}`}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.removeTimeBtn}
+                    onPress={() => handleRemoveTime(day, dayTime)}>
+                    <Image
+                      source={require('../../assets/icons/remove-time-btn.png')}
+                      style={styles.remove_time_btn}
+                    />
+                  </TouchableOpacity>
+                </View>
+              )),
+            )}
+          </ScrollView>
 
-        <Text style={styles.label}>Add Slots</Text>
-        <View style={styles.pickWrapper}>
-          <View style={styles.pickerView}>
-            <Picker
-              selectedValue={currDayTime.day}
-              onValueChange={(day: keyof Days) => handleDayChange(day)}
-              style={styles.picker}>
-              {daysOfWeek.map(day => (
-                <Picker.Item key={day} label={daysOfWeekMap[day]} value={day} />
-              ))}
-            </Picker>
-          </View>
-        </View>
-        <View style={styles.timePicker}>
-          <View style={styles.timePickerSub}>
-            <TimePicker
-              timeString={currDayTime.startTime}
-              isAM={currDayTime.isAM_start}
-              changeIsAM={setStartAm}
-              changeTimeString={setStartTime}
-            />
-            <Text style={styles.label}>to</Text>
-            <TimePicker
-              timeString={currDayTime.endTime}
-              isAM={currDayTime.isAM_end}
-              changeIsAM={setEndAm}
-              changeTimeString={setEndTime}
-            />
-          </View>
-          <TouchableOpacity
-            style={styles.addTimeBtn}
-            onPress={() => handleAddTime()}>
-            <Text style={styles.addSlotTxt}>Add</Text>
-          </TouchableOpacity>
-        </View>
-        <ScrollView
-          horizontal
-          contentContainerStyle={styles.tabContainer}
-          showsHorizontalScrollIndicator={false}
-          style={styles.scrollView}>
-          {Object.keys(card.days).map(day =>
-            card.days[day as keyof Days].map((dayTime: Slots, index) => (
-              <View key={index} style={styles.tabViewStyle}>
-                <TouchableOpacity
-                  key={dayTime.start}
-                  style={styles.tabButton}
-                >
-                  <Text style={styles.tabLabel}>
-                    {daysOfWeekMap[day].substring(0, 3)},{' '}
-                    {convertToUTM(dayTime.start)}
-                    {' - '}
-                    {convertToUTM(dayTime.end)}
-                    {dayTime.roomName && `, ${dayTime.roomName}`}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.removeTimeBtn}
-                  onPress={() => handleRemoveTime(day, dayTime)}>
-                  <Image
-                    source={require('../../assets/icons/remove-time-btn.png')}
-                    style={styles.remove_time_btn}
-                  />
-                </TouchableOpacity>
-              </View>
-            )),
-          )}
-        </ScrollView>
-
-        <Text style={styles.label}>Tag Color</Text>
-        <TagColorPicker
-          selectedColor={card.tagColor}
-          setSelectedColor={setSelectedColor}
-        />
-        <View style={styles.container3}>
-          {/* Activity Frequency */}
-          <View style={styles.row}>
-            <Text style={styles.label3}>Show Course Frequency</Text>
-            <Switch
-              value={card.hasLimit}
-              onValueChange={value => handleLimitToggle(value)}
-            />
-          </View>
-          {/* hasLimit: false,
+          <Text style={styles.label}>Tag Color</Text>
+          <TagColorPicker
+            selectedColor={card.tagColor}
+            setSelectedColor={setSelectedColor}
+          />
+          <View style={styles.container3}>
+            {/* Activity Frequency */}
+            <View style={styles.row}>
+              <Text style={styles.label3}>Show Course Frequency</Text>
+              <Switch
+                value={card.hasLimit}
+                onValueChange={value => handleLimitToggle(value)}
+              />
+            </View>
+            {/* hasLimit: false,
       limit: 0,
       limitType: 'with-absent', */}
-          {/* Frequency Input */}
-          {card.hasLimit && (
-            <View>
-              <View style={styles.row}>
-                <Text style={styles.label}>Course Frequency</Text>
-                <TextInput
-                  style={styles.input3}
-                  keyboardType="numeric"
-                  value={card.limit.toString()}
-                  onChangeText={text => handleFreqUpdate(Number(text) || 0)}
-                />
+            {/* Frequency Input */}
+            {card.hasLimit && (
+              <View>
+                <View style={styles.row}>
+                  <Text style={styles.label}>Course Frequency</Text>
+                  <TextInput
+                    style={styles.input3}
+                    keyboardType="numeric"
+                    value={card.limit.toString()}
+                    onChangeText={text => handleFreqUpdate(Number(text) || 0)}
+                  />
+                </View>
+
+                {/* Include Absents */}
+                <View style={styles.row}>
+                  <Text style={styles.label3}>Include Absents</Text>
+                  <Switch
+                    value={card.limitType === 'with-absent' ? true : false}
+                    onValueChange={value => handleLimitType(value)}
+                  />
+                </View>
               </View>
+            )}
+          </View>
+        </ScrollView>
+      </View>
+    );
+  };
 
-              {/* Include Absents */}
-              <View style={styles.row}>
-                <Text style={styles.label3}>Include Absents</Text>
-                <Switch
-                  value={card.limitType === 'with-absent' ? true : false}
-                  onValueChange={value => handleLimitType(value)}
-                />
-              </View>
-            </View>
-          )}
-        </View>
-      </ScrollView>
-    </View>
-  );
-};
+  const styles = StyleSheet.create({
+    header: {
+      // borderRadius: 15,
+      width: '100%',
+      // marginTop: 20,
+      margin: 'auto',
+      paddingBottom: 20,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 20,
+    },
+    saveBtnTxt: { color: '#fff', fontWeight: 600 },
+    iconsStyle: { width: 40, height: 40 },
+    presentTotalBlock: { width: '48%', minWidth: 75 },
+    clearCard: {
+      backgroundColor: '#CE0000',
+      borderRadius: 8,
+      padding: 7,
+      paddingHorizontal: 15,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    registerName: { color: '#fff', fontSize: 20 },
+    saveCard: {
+      backgroundColor: '#008817',
+      borderRadius: 8,
+      padding: 7,
+      paddingHorizontal: 15,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    functionButtons: {
+      marginLeft: 'auto',
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 20,
+    },
+    addCourseTxt: {
+      color: '#fff',
+      fontSize: 18,
+      textAlign: 'left',
+      marginBottom: 20,
+    },
+    todayIcon: {
+      width: 35,
+      height: 35,
+    },
+    pickWrapper: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      flexWrap: 'wrap',
+      marginBottom: 15,
+    },
 
-const styles = StyleSheet.create({
-  header: {
-    // borderRadius: 15,
-    width: '100%',
-    // marginTop: 20,
-    margin: 'auto',
-    paddingBottom: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 20,
-  },
-  saveBtnTxt: {color: '#fff', fontWeight: 600},
-  iconsStyle: {width: 40, height: 40},
-  presentTotalBlock: {width: '48%', minWidth: 75},
-  clearCard: {
-    backgroundColor: '#CE0000',
-    borderRadius: 8,
-    padding: 7,
-    paddingHorizontal: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  registerName: {color: '#fff', fontSize: 20},
-  saveCard: {
-    backgroundColor: '#008817',
-    borderRadius: 8,
-    padding: 7,
-    paddingHorizontal: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  functionButtons: {
-    marginLeft: 'auto',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 20,
-  },
-  addCourseTxt: {
-    color: '#fff',
-    fontSize: 18,
-    textAlign: 'left',
-    marginBottom: 20,
-  },
-  todayIcon: {
-    width: 35,
-    height: 35,
-  },
-  pickWrapper: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    flexWrap: 'wrap',
-    marginBottom: 15,
-  },
+    topContainer: {
+      flex: 1,
+      backgroundColor: '#18181B',
+      paddingHorizontal: 16,
+    },
+    scrollView: {
+      flex: 0,
+      flexGrow: 0,
+    },
+    scrollView2: {
+      flex: 1,
+    },
+    tabContainer: {
+      paddingVertical: 10,
+    },
+    tabViewStyle: {
+      position: 'relative',
+    },
+    timePicker: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 20,
+    },
+    timePickerSub: {
+      flexDirection: 'row',
+      gap: 8,
+      alignItems: 'center',
+    },
+    removeTimeBtn: {
+      position: 'absolute',
+      right: 7,
+      top: -7,
+    },
+    tabButton: {
+      paddingVertical: 10,
+      paddingHorizontal: 15,
+      marginRight: 15,
+      borderRadius: 50,
+      borderWidth: 1,
+      borderColor: '#008817',
+    },
+    remove_time_btn: {
+      width: 18,
+      height: 18,
+    },
+    container: {
+      flex: 1,
+      backgroundColor: '#18181B',
+      paddingHorizontal: 5,
+    },
+    // sideLabel: {
+    //   fontSize: 16,
+    //   color: '#fff',
+    //   marginBottom: 8,
+    //   marginTop: 16,
+    // },
+    tabLabel: {
+      fontSize: 11,
+      color: '#fff',
+    },
+    label: {
+      fontSize: 16,
+      color: '#fff',
+      marginBottom: 8,
+      marginTop: 16,
+    },
+    markings: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      justifyContent: 'space-between',
+    },
+    addTimeBtn: {
+      backgroundColor: '#CE0000',
+      borderRadius: 8,
+      padding: 10,
+      paddingHorizontal: 20,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginLeft: 'auto',
+    },
+    addSlotTxt: { color: '#fff', textAlign: 'center', fontWeight: 600 },
+    subLabel: {
+      fontSize: 14,
+      color: '#ccc',
+      marginBottom: 4,
+      marginTop: 8,
+    },
+    ampm: {
+      backgroundColor: '#1F1F22',
+      color: '#fff',
+      padding: 10,
+      borderRadius: 8,
+      fontSize: 16,
+      borderWidth: 1,
+      borderColor: '#464646',
+    },
+    input: {
+      backgroundColor: '#1F1F22',
+      color: '#fff',
+      padding: 10,
+      borderRadius: 8,
+      fontSize: 16,
+      marginBottom: 8,
+      borderWidth: 1,
+      borderColor: '#464646',
+    },
+    pickerView: {
+      borderWidth: 1,
+      borderColor: '#464646',
+      width: '100%',
+      minWidth: 160,
+      marginBottom: 8,
+      borderRadius: 8,
+      paddingLeft: 10,
+      paddingRight: 10,
+      backgroundColor: '#1F1F22',
+      height: 56, // Increased height for better visibility
+    },
+    picker: {
+      color: '#fff',
+      height: 56, // Match container height
+    },
+    container3: {
+      flex: 1,
+      marginBottom: 80,
+    },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginVertical: 10,
+    },
+    label3: {
+      fontSize: 16,
+      color: '#FFFFFF', // White text
+    },
+    input3: {
+      width: 60,
+      height: 40,
+      backgroundColor: '#333',
+      color: '#FFF',
+      textAlign: 'center',
+      borderRadius: 5,
+      borderWidth: 1,
+      borderColor: '#555',
+    },
+  });
 
-  topContainer: {
-    flex: 1,
-    backgroundColor: '#18181B',
-    paddingHorizontal: 16,
-  },
-  scrollView: {
-    flex: 0,
-    flexGrow: 0,
-  },
-  scrollView2: {
-    flex: 1,
-  },
-  tabContainer: {
-    paddingVertical: 10,
-  },
-  tabViewStyle: {
-    position: 'relative',
-  },
-  timePicker: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  timePickerSub: {
-    flexDirection: 'row',
-    gap: 8,
-    alignItems: 'center',
-  },
-  removeTimeBtn: {
-    position: 'absolute',
-    right: 7,
-    top: -7,
-  },
-  tabButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    marginRight: 15,
-    borderRadius: 50,
-    borderWidth: 1,
-    borderColor: '#008817',
-  },
-  remove_time_btn: {
-    width: 18,
-    height: 18,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: '#18181B',
-    paddingHorizontal: 5,
-  },
-  // sideLabel: {
-  //   fontSize: 16,
-  //   color: '#fff',
-  //   marginBottom: 8,
-  //   marginTop: 16,
-  // },
-  tabLabel: {
-    fontSize: 11,
-    color: '#fff',
-  },
-  label: {
-    fontSize: 16,
-    color: '#fff',
-    marginBottom: 8,
-    marginTop: 16,
-  },
-  markings: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  addTimeBtn: {
-    backgroundColor: '#CE0000',
-    borderRadius: 8,
-    padding: 10,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 'auto',
-  },
-  addSlotTxt: {color: '#fff', textAlign: 'center', fontWeight: 600},
-  subLabel: {
-    fontSize: 14,
-    color: '#ccc',
-    marginBottom: 4,
-    marginTop: 8,
-  },
-  ampm: {
-    backgroundColor: '#1F1F22',
-    color: '#fff',
-    padding: 10,
-    borderRadius: 8,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#464646',
-  },
-  input: {
-    backgroundColor: '#1F1F22',
-    color: '#fff',
-    padding: 10,
-    borderRadius: 8,
-    fontSize: 16,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#464646',
-  },
-  pickerView: {
-    borderWidth: 1,
-    borderColor: '#464646',
-    width: '100%',
-    minWidth: 160,
-    marginBottom: 8,
-    borderRadius: 8,
-    paddingLeft: 10,
-    paddingRight: 10,
-    backgroundColor: '#1F1F22',
-    height: 56, // Increased height for better visibility
-  },
-  picker: {
-    color: '#fff',
-    height: 56, // Match container height
-  },
-  container3: {
-    flex: 1,
-    marginBottom: 80,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginVertical: 10,
-  },
-  label3: {
-    fontSize: 16,
-    color: '#FFFFFF', // White text
-  },
-  input3: {
-    width: 60,
-    height: 40,
-    backgroundColor: '#333',
-    color: '#FFF',
-    textAlign: 'center',
-    borderRadius: 5,
-    borderWidth: 1,
-    borderColor: '#555',
-  },
-});
-
-export default EditCard;
+  export default EditCard;
