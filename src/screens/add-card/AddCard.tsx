@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -14,14 +14,14 @@ import {
   Switch,
 } from 'react-native';
 import useStore from '../../store/store';
-import {Days, CardInterface, Slots, Markings} from '../../types/cards';
-import {Picker} from '@react-native-picker/picker';
+import { Days, CardInterface, Slots, Markings } from '../../types/cards';
+import { Picker } from '@react-native-picker/picker';
 import {
   convertTo24Hrs,
   convertToStartSeconds,
   convertToUTM,
 } from '../../utils/functions';
-import {getTextColorForBackground} from '../../types/allCardConstraint';
+import { getTextColorForBackground } from '../../types/allCardConstraint';
 // import Calendar from '../components/Calendar';
 import TimePicker from '../../components/TimePicker';
 import TagColorPicker from '../../components/TagColorPicker';
@@ -48,8 +48,8 @@ interface currDayTimeProps {
   classroom: string;
 }
 
-const AddCard: React.FC = ({navigation}: any) => {
-  const {addCard, activeRegister, registers, defaultTargetPercentage} =
+const AddCard: React.FC = ({ navigation }: any) => {
+  const { addCard, activeRegister, registers, defaultTargetPercentage } =
     useStore();
   const [currDayTime, setCurrDayTime] = useState<currDayTimeProps>({
     day: 'mon',
@@ -197,9 +197,9 @@ const AddCard: React.FC = ({navigation}: any) => {
     const isNew = card.days[currDayTime.day].findIndex(
       dayTime =>
         dayTime.start ===
-          convertTo24Hrs(currDayTime.startTime, currDayTime.isAM_start) &&
+        convertTo24Hrs(currDayTime.startTime, currDayTime.isAM_start) &&
         dayTime.end ===
-          convertTo24Hrs(currDayTime.endTime, currDayTime.isAM_end),
+        convertTo24Hrs(currDayTime.endTime, currDayTime.isAM_end),
     );
     if (isNew !== -1) {
       Alert.alert('Error', 'Slot already exists!');
@@ -295,6 +295,7 @@ const AddCard: React.FC = ({navigation}: any) => {
     };
     setCard(newCard);
   };
+
   const handleSubmit = () => {
     if (!card.title) {
       Alert.alert('Error', 'Please Enter Course Title!');
@@ -314,12 +315,8 @@ const AddCard: React.FC = ({navigation}: any) => {
       if (!currDayTime.classroom.trim()) return baseCard;
 
       const updatedDays = { ...baseCard.days };
-      let hasSlots = false;
-
-      // Check if there are any slots and update them
       Object.keys(updatedDays).forEach(day => {
         if (updatedDays[day as keyof Days].length > 0) {
-          hasSlots = true;
           updatedDays[day as keyof Days] = updatedDays[day as keyof Days].map(slot => ({
             ...slot,
             roomName: currDayTime.classroom.trim() || slot.roomName,
@@ -327,7 +324,6 @@ const AddCard: React.FC = ({navigation}: any) => {
         }
       });
 
-      // If no slots exist, store as defaultClassroom
       return {
         ...baseCard,
         days: updatedDays,
@@ -352,18 +348,20 @@ const AddCard: React.FC = ({navigation}: any) => {
         isPresent: false,
       });
     }
+
     const markedCard: CardInterface = {
       ...finalCard,
       markedAt: newMarkings,
     };
     addCard(activeRegister, markedCard);
 
-    navigation.navigate('App');
+    navigation.goBack();
+
     if (Platform.OS === 'android') {
       ToastAndroid.show('New Course Added', ToastAndroid.SHORT);
     }
-    // Add logic to save or navigate
   };
+
   const handleNavigateBack = () => {
     navigation.goBack();
   };
@@ -587,14 +585,14 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'space-between',
   },
-  registerName: {color: '#fff', fontSize: 20},
+  registerName: { color: '#fff', fontSize: 20 },
   functionButtons: {
     marginLeft: 'auto',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 20,
   },
-  presentTotalTxt: {width: '48%', minWidth: 75},
+  presentTotalTxt: { width: '48%', minWidth: 75 },
   timePickerComp: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -613,8 +611,8 @@ const styles = StyleSheet.create({
     gap: 8,
     alignItems: 'center',
   },
-  addBtnTxt: {color: '#fff', textAlign: 'center', fontWeight: 600},
-  saveBtnTxt: {color: '#fff', fontWeight: 600},
+  addBtnTxt: { color: '#fff', textAlign: 'center', fontWeight: 600 },
+  saveBtnTxt: { color: '#fff', fontWeight: 600 },
   addCourseTxt: {
     color: '#fff',
     fontSize: 18,
@@ -649,7 +647,7 @@ const styles = StyleSheet.create({
     right: 7,
     top: -7,
   },
-  backBtnIcon: {width: 40, height: 40},
+  backBtnIcon: { width: 40, height: 40 },
   tabButton: {
     paddingVertical: 10,
     paddingHorizontal: 15,
