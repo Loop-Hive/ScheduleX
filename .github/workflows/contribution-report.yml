@@ -1,0 +1,366 @@
+---
+name: 📊 Generate Contribution Report
+
+on:
+  workflow_dispatch:
+    inputs:
+      time_filter:
+        description: 'Time period to filter contributions'
+        required: true
+        default: '1_month'
+        type: choice
+        options:
+          - '1_day'
+          - '1_week'
+          - '1_month'
+          - '90_days'
+          - '6_months'
+          - '1_year'
+      output_format:
+        description: 'Output format for the report'
+        required: true
+        default: 'markdown'
+        type: choice
+        options:
+          - 'markdown'
+          - 'json'
+          - 'csv'
+
+permissions:
+  contents: read
+  pull-requests: read
+  actions: write
+
+jobs:
+  generate-report:
+    name: 📈 Generate GSSoC'25 Contribution Report
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 🏗️ Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 📋 Calculate Date Range
+        id: date-range
+        run: |
+          # Get current date
+          current_date=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          echo "current_date=$current_date" >> $GITHUB_OUTPUT
+
+          # Calculate start date based on filter
+          case "${{ github.event.inputs.time_filter }}" in
+            "1_day")
+              start_date=$(date -u -d "1 day ago" +"%Y-%m-%dT%H:%M:%SZ")
+              period_name="Last 1 Day"
+              ;;
+            "1_week")
+              start_date=$(date -u -d "1 week ago" +"%Y-%m-%dT%H:%M:%SZ")
+              period_name="Last 1 Week"
+              ;;
+            "1_month")
+              start_date=$(date -u -d "1 month ago" +"%Y-%m-%dT%H:%M:%SZ")
+              period_name="Last 1 Month"
+              ;;
+            "90_days")
+              start_date=$(date -u -d "90 days ago" +"%Y-%m-%dT%H:%M:%SZ")
+              period_name="Last 90 Days"
+              ;;
+            "6_months")
+              start_date=$(date -u -d "6 months ago" +"%Y-%m-%dT%H:%M:%SZ")
+              period_name="Last 6 Months"
+              ;;
+            "1_year")
+              start_date=$(date -u -d "1 year ago" +"%Y-%m-%dT%H:%M:%SZ")
+              period_name="Last 1 Year"
+              ;;
+            *)
+              start_date=$(date -u -d "1 month ago" +"%Y-%m-%dT%H:%M:%SZ")
+              period_name="Last 1 Month"
+              ;;
+          esac
+
+          echo "start_date=$start_date" >> $GITHUB_OUTPUT
+          echo "period_name=$period_name" >> $GITHUB_OUTPUT
+          echo "📅 Date range: $start_date to $current_date ($period_name)"
+
+      - name: 🔍 Fetch GSSoC'25 Pull Requests
+        id: fetch-prs
+        run: |
+          echo "🔍 Fetching PRs with 'gssoc25' label since ${{ steps.date-range.outputs.start_date }}"
+
+          # Create output directory
+          mkdir -p reports
+
+          # Fetch PRs with gssoc25 label using GitHub API
+          # We'll fetch all pages to ensure we get all PRs
+          page=1
+          all_prs="[]"
+
+          while true; do
+            echo "📄 Fetching page $page..."
+
+            response=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              "https://api.github.com/repos/${{ github.repository }}/pulls?state=all&per_page=100&page=$page&sort=updated&direction=desc")
+
+            # Check if response is empty array or has error
+            if [[ "$response" == "[]" ]] || [[ "$response" == *"\"message\":"* ]]; then
+              echo "✅ No more PRs found on page $page"
+              break
+            fi
+
+            # Filter PRs with gssoc25 label and within date range
+            filtered_prs=$(echo "$response" | jq --arg start_date "${{ steps.date-range.outputs.start_date }}" '
+              map(select(
+                (.labels[] | select(.name == "gssoc25")) and
+                (.updated_at >= $start_date)
+              ))
+            ')
+
+            # Add to all_prs array
+            all_prs=$(echo "$all_prs" "$filtered_prs" | jq -s 'add')
+
+            page=$((page + 1))
+          done
+
+          # Save raw PR data
+          echo "$all_prs" > reports/raw_prs.json
+
+          # Count total PRs
+          total_prs=$(echo "$all_prs" | jq 'length')
+          echo "total_prs=$total_prs" >> $GITHUB_OUTPUT
+          echo "📊 Found $total_prs GSSoC'25 PRs in the specified time period"
+
+          # Get unique contributors
+          contributors=$(echo "$all_prs" | jq -r '[.[].user.login] | unique | length')
+          echo "contributors=$contributors" >> $GITHUB_OUTPUT
+          echo "👥 Found $contributors unique contributors"
+
+      - name: 📊 Generate Markdown Report
+        if: github.event.inputs.output_format == 'markdown' || github.event.inputs.output_format == ''
+        run: |
+          echo "📝 Generating Markdown report..."
+
+          # Read PR data
+          all_prs=$(cat reports/raw_prs.json)
+
+          # Create markdown report
+          cat > reports/contribution_report.md << 'EOF'
+          # 🏆 GSSoC'25 Contribution Report
+
+          **Generated on:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          **Period:** ${{ steps.date-range.outputs.period_name }}
+          **Date Range:** ${{ steps.date-range.outputs.start_date }} to ${{ steps.date-range.outputs.current_date }}
+          **Repository:** ${{ github.repository }}
+
+          ---
+
+          ## 📈 Summary Statistics
+
+          - **Total Pull Requests:** ${{ steps.fetch-prs.outputs.total_prs }}
+          - **Unique Contributors:** ${{ steps.fetch-prs.outputs.contributors }}
+          - **Time Period:** ${{ steps.date-range.outputs.period_name }}
+
+          ---
+
+          ## 👥 Contributors and Their Contributions
+
+          EOF
+
+          # Generate contributor statistics
+          echo "$all_prs" | jq -r '
+            group_by(.user.login) |
+            map({
+              username: .[0].user.login,
+              name: .[0].user.login,
+              avatar_url: .[0].user.avatar_url,
+              html_url: .[0].user.html_url,
+              pr_count: length,
+              prs: map({
+                number: .number,
+                title: .title,
+                state: .state,
+                created_at: .created_at,
+                updated_at: .updated_at,
+                html_url: .html_url,
+                merged_at: .merged_at,
+                labels: [.labels[].name]
+              })
+            }) |
+            sort_by(-.pr_count)
+          ' > reports/contributor_stats.json
+
+          # Add contributors to markdown
+          echo "$all_prs" | jq -r '
+            group_by(.user.login) |
+            sort_by(-length) |
+            to_entries |
+            map("### " + ((.key + 1) | tostring) + ". [@" + .[].value[0].user.login + "](" + .[].value[0].user.html_url + ") (" + (.[].value | length | tostring) + " PRs)\n\n" +
+            "![Avatar](" + .[].value[0].user.avatar_url + "&s=50)\n\n" +
+            "**Pull Requests:**\n" +
+            (.[].value | map("- [#" + (.number | tostring) + " " + .title + "](" + .html_url + ") - " +
+              (if .state == "closed" and .merged_at then "✅ Merged" elif .state == "closed" then "❌ Closed" else "🔄 Open" end) +
+              " (" + (.created_at | split("T")[0]) + ")"
+            ) | join("\n")) +
+            "\n\n---\n"
+          ' >> reports/contribution_report.md
+
+          # Add PR timeline
+          cat >> reports/contribution_report.md << 'EOF'
+
+          ## 📅 Pull Request Timeline
+
+          EOF
+
+          echo "$all_prs" | jq -r '
+            sort_by(.created_at) |
+            map("- **" + (.created_at | split("T")[0]) + "** - [#" + (.number | tostring) + " " + .title + "](" + .html_url + ") by [@" + .user.login + "](" + .user.html_url + ")")
+          ' | jq -r '.[]' >> reports/contribution_report.md
+
+          cat >> reports/contribution_report.md << 'EOF'
+
+          ---
+
+          ## 🏷️ Label Distribution
+
+          EOF
+
+          # Add label statistics
+          echo "$all_prs" | jq -r '
+            [.[].labels[].name] |
+            group_by(.) |
+            map({label: .[0], count: length}) |
+            sort_by(-.count) |
+            map("- **" + .label + ":** " + (.count | tostring) + " PRs")
+          ' | jq -r '.[]' >> reports/contribution_report.md
+
+          cat >> reports/contribution_report.md << 'EOF'
+
+          ---
+
+          ## 📊 Report Details
+
+          This report was generated automatically by the GSSoC'25 Contribution Report workflow.
+
+          **Filters Applied:**
+          - Label: `gssoc25`
+          - Time Period: ${{ steps.date-range.outputs.period_name }}
+          - Repository: ${{ github.repository }}
+
+          **Generated by:** [@${{ github.actor }}](${{ github.server_url }}/${{ github.actor }})
+          **Workflow Run:** [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+          EOF
+
+          echo "✅ Markdown report generated successfully"
+
+      - name: 📄 Generate JSON Report
+        if: github.event.inputs.output_format == 'json'
+        run: |
+          echo "📝 Generating JSON report..."
+
+          # Read PR data
+          all_prs=$(cat reports/raw_prs.json)
+
+          # Create comprehensive JSON report
+          cat > reports/contribution_report.json << EOF
+          {
+            "metadata": {
+              "generated_at": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+              "period": "${{ steps.date-range.outputs.period_name }}",
+              "date_range": {
+                "start": "${{ steps.date-range.outputs.start_date }}",
+                "end": "${{ steps.date-range.outputs.current_date }}"
+              },
+              "repository": "${{ github.repository }}",
+              "generated_by": "${{ github.actor }}",
+              "workflow_run": "${{ github.run_id }}"
+            },
+            "summary": {
+              "total_prs": ${{ steps.fetch-prs.outputs.total_prs }},
+              "unique_contributors": ${{ steps.fetch-prs.outputs.contributors }},
+              "time_period": "${{ steps.date-range.outputs.period_name }}"
+            },
+          EOF
+
+          echo "  \"contributors\": " >> reports/contribution_report.json
+          cat reports/contributor_stats.json >> reports/contribution_report.json
+          echo "," >> reports/contribution_report.json
+
+          echo "  \"pull_requests\": " >> reports/contribution_report.json
+          cat reports/raw_prs.json >> reports/contribution_report.json
+
+          cat >> reports/contribution_report.json << EOF
+          }
+          EOF
+
+          echo "✅ JSON report generated successfully"
+
+      - name: 📊 Generate CSV Report
+        if: github.event.inputs.output_format == 'csv'
+        run: |
+          echo "📝 Generating CSV report..."
+
+          # Read PR data
+          all_prs=$(cat reports/raw_prs.json)
+
+          # Create CSV header
+          echo "PR_Number,Title,Author,State,Created_Date,Updated_Date,Merged_Date,Labels,URL" > reports/contribution_report.csv
+
+          # Add PR data to CSV
+          echo "$all_prs" | jq -r '
+            .[] |
+            [
+              .number,
+              (.title | gsub(","; ";")),
+              .user.login,
+              .state,
+              (.created_at | split("T")[0]),
+              (.updated_at | split("T")[0]),
+              (if .merged_at then (.merged_at | split("T")[0]) else "N/A" end),
+              ([.labels[].name] | join(";")),
+              .html_url
+            ] | @csv
+          ' >> reports/contribution_report.csv
+
+          # Create contributor summary CSV
+          echo "Username,PR_Count,Profile_URL" > reports/contributor_summary.csv
+          echo "$all_prs" | jq -r '
+            group_by(.user.login) |
+            map([.[0].user.login, length, .[0].user.html_url]) |
+            sort_by(-.[1]) |
+            .[] | @csv
+          ' >> reports/contributor_summary.csv
+
+          echo "✅ CSV reports generated successfully"
+
+      - name: 📁 Upload Report as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gssoc25-contribution-report-${{ github.event.inputs.time_filter }}-${{ github.event.inputs.output_format }}
+          path: reports/
+          retention-days: 30
+
+      - name: 📋 Display Report Summary
+        run: |
+          echo "## 🎉 Report Generated Successfully!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📊 Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Time Period:** ${{ steps.date-range.outputs.period_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Total PRs:** ${{ steps.fetch-prs.outputs.total_prs }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Unique Contributors:** ${{ steps.fetch-prs.outputs.contributors }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Output Format:** ${{ github.event.inputs.output_format }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📁 Download Report" >> $GITHUB_STEP_SUMMARY
+          echo "The contribution report has been uploaded as an artifact named:" >> $GITHUB_STEP_SUMMARY
+          echo "\`gssoc25-contribution-report-${{ github.event.inputs.time_filter }}-${{ github.event.inputs.output_format }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "You can download it from the workflow run page artifacts section." >> $GITHUB_STEP_SUMMARY
+
+          # Show preview if markdown
+          if [[ "${{ github.event.inputs.output_format }}" == "markdown" ]]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### 📄 Report Preview" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            head -50 reports/contribution_report.md >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          fi
