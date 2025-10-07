@@ -115,101 +115,117 @@ const EditCard: React.FC = ({ navigation, route }: any) => {
     limitType: 'with-absent',
     defaultClassroom: '',
   });
-  const [presents, setPresents] = useState(0);
-  const [totals, setTotals] = useState(0);
-  useEffect(() => {
-    const currCard = registers[card_register]?.cards?.find(
-      curr => curr.id === card_id,
-    );
-    if (currCard) {
-      setCard(currCard);
-      setPresents(currCard.present);
-      setTotals(currCard.total);
-    }
-  }, [card_register, card_id, registers]);
-  const setSelectedColor = (color: string) => {
-    setCard(prev => ({
-      ...prev,
-      tagColor: color,
-    }));
-  };
-
-  const handleInputChange = (
-    field: keyof CardInterface,
-    value: string | number,
-  ) => {
-    setCard(prev => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
-
-  const handleLimitToggle = (value: boolean) => {
-    setCard(prev => ({
-      ...prev,
-      hasLimit: value,
-    }));
-  };
-  const handleFreqUpdate = (value: number) => {
-    setCard(prev => ({
-      ...prev,
-      limit: value,
-    }));
-  };
-  const handleLimitType = (value: boolean) => {
-    setCard(prev => ({
-      ...prev,
-      limitType: value === true ? 'with-absent' : 'without-absent',
-    }));
-  };
-  const handleDayChange = (day: keyof Days) => {
-    setCurrDayTime(prev => ({
-      ...prev,
-      day,
-    }));
-  };
-
-  const isValidTime = (time: string) => {
-    // check format HH:MM and not alphabets
-    if (!/^\d{2}:\d{2}$/.test(time)) {
-      return false;
-    }
-
-    // check if hours and minutes are in valid range
-    const [hours, minutes] = time.split(':').map(Number);
-    if (hours < 1 || hours > 12) {
-      return false;
-    }
-    if (minutes < 0 || minutes > 59) {
-      return false;
-    }
-    return true;
-  };
-
-  const handleAddTime = () => {
-    if (currDayTime.startTime === '00:00' && currDayTime.endTime === '00:00') {
-      Alert.alert('Error', 'Please fill Correct Time!');
+  // Prevent duplicate submissions when user taps Save repeatedly
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const handleSubmit = () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    if (!card.title) {
+      Alert.alert('Error', 'Please Enter Course Title!');
+      setIsSubmitting(false);
       return;
     }
-    if (card.days[currDayTime.day]?.length >= 3) {
-      Alert.alert('Error', 'Maximum 3 Slots Allowed on a single Day!');
+    if (card.total < card.present) {
+      Alert.alert('Error', 'total should be >= present');
+      setIsSubmitting(false);
       return;
     }
-    const isNew = card.days[currDayTime.day].findIndex(
-      dayTime =>
-        dayTime.start ===
-        convertTo24Hrs(currDayTime.startTime, currDayTime.isAM_start) &&
-        dayTime.end ===
-        convertTo24Hrs(currDayTime.endTime, currDayTime.isAM_end),
-    );
-    if (isNew !== -1) {
-      Alert.alert('Error', 'Slot already exists!');
+    if (card.target_percentage > 100 || card.target_percentage < 0) {
+      Alert.alert('Error', 'Target Percentage should be between 0 and 100');
+      setIsSubmitting(false);
       return;
     }
-    if (
-      !isValidTime(currDayTime.startTime) ||
-      !isValidTime(currDayTime.endTime)
-    ) {
+
+    // Create updated card with classroom info applied to all slots
+    const createUpdatedCardWithClassroom = (baseCard: CardInterface) => {
+      if (!currDayTime.classroom.trim()) return baseCard;
+
+      const updatedDays = { ...baseCard.days };
+      let hasSlots = false;
+
+      // Check if there are any slots and update them
+      Object.keys(updatedDays).forEach(day => {
+        if (updatedDays[day as keyof Days].length > 0) {
+          hasSlots = true;
+          updatedDays[day as keyof Days] = updatedDays[day as keyof Days].map(slot => ({
+            ...slot,
+            roomName: currDayTime.classroom.trim() || slot.roomName,
+          }));
+        }
+      });
+
+      // If no slots exist, store as defaultClassroom
+      return {
+        ...baseCard,
+        days: updatedDays,
+        defaultClassroom: currDayTime.classroom.trim()
+      };
+    };
+
+    const finalCard = createUpdatedCardWithClassroom(card);
+
+    if (card.present !== presents || card.total !== totals) {
+      Alert.alert(
+        'Save Changes',
+        'Changing attendance markings will delete the current attendance dates. Are you sure you want to continue?',
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+            onPress: () => {
+              setIsSubmitting(false);
+            },
+          },
+          {
+            text: 'OK',
+            onPress: () => {
+              try {
+                let newMarkings: Markings[] = [];
+                for (let i = 0; i < card.present; i++) {
+                  newMarkings.push({
+                    id: i,
+                    date: new Date().toString(),
+                    isPresent: true,
+                  });
+                }
+                for (let i = card.present; i < card.total; i++) {
+                  newMarkings.push({
+                    id: i + 1,
+                    date: new Date().toString(),
+                    isPresent: false,
+                  });
+                }
+                const editedCard: CardInterface = {
+                  ...finalCard,
+                  markedAt: newMarkings,
+                };
+
+                editCard(card_register, editedCard, card_id);
+
+                if (Platform.OS === 'android') {
+                  ToastAndroid.show('Changes Saved', ToastAndroid.SHORT);
+                }
+                navigation.goBack();
+              } finally {
+                setIsSubmitting(false);
+              }
+            },
+          },
+        ],
+        { cancelable: false },
+      );
+    } else {
+      try {
+        editCard(card_register, finalCard, card_id);
+
+        if (Platform.OS === 'android') {
+          ToastAndroid.show('Changes Saved', ToastAndroid.SHORT);
+        }
+        navigation.goBack();
+      } finally {
+        setIsSubmitting(false);
+      }
+    }
       Alert.alert('Error', 'Please Fill Correct Time in HH:MM Format!');
       return;
     }
@@ -436,11 +452,11 @@ const EditCard: React.FC = ({ navigation, route }: any) => {
               : registerName}
           </Text>
           <View style={styles.functionButtons}>
-            <TouchableOpacity onPress={handleClearCard} style={styles.clearCard}>
+            <TouchableOpacity onPress={handleClearCard} style={styles.clearCard} disabled={isSubmitting}>
               <Text style={styles.saveBtnTxt}>Clear</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={handleSubmit} style={styles.saveCard}>
-              <Text style={styles.saveBtnTxt}>Save</Text>
+            <TouchableOpacity onPress={handleSubmit} style={[styles.saveCard, isSubmitting ? styles.saveCardDisabled : null]} disabled={isSubmitting}>
+              <Text style={styles.saveBtnTxt}>{isSubmitting ? 'Saving...' : 'Save'}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -652,6 +668,9 @@ const EditCard: React.FC = ({ navigation, route }: any) => {
       paddingHorizontal: 15,
       alignItems: 'center',
       justifyContent: 'center',
+    },
+    saveCardDisabled: {
+      opacity: 0.6,
     },
     functionButtons: {
       marginLeft: 'auto',

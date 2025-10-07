@@ -113,6 +113,8 @@ const AddCard: React.FC = ({ navigation }: any) => {
     limitType: 'with-absent',
     defaultClassroom: '',
   });
+  // Prevent duplicate submissions when user taps Save repeatedly
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const setSelectedColor = (color: string) => {
     setCard(prev => ({
       ...prev,
@@ -296,17 +298,22 @@ const AddCard: React.FC = ({ navigation }: any) => {
     setCard(newCard);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     if (!card.title) {
       Alert.alert('Error', 'Please Enter Course Title!');
+      setIsSubmitting(false);
       return;
     }
     if (card.total < card.present) {
       Alert.alert('Error', 'total should be >= present');
+      setIsSubmitting(false);
       return;
     }
     if (card.target_percentage > 100 || card.target_percentage < 0) {
       Alert.alert('Error', 'Target Percentage should be between 0 and 100');
+      setIsSubmitting(false);
       return;
     }
 
@@ -353,12 +360,15 @@ const AddCard: React.FC = ({ navigation }: any) => {
       ...finalCard,
       markedAt: newMarkings,
     };
-    addCard(activeRegister, markedCard);
-
-    navigation.goBack();
-
-    if (Platform.OS === 'android') {
-      ToastAndroid.show('New Course Added', ToastAndroid.SHORT);
+    try {
+      addCard(activeRegister, markedCard);
+      if (Platform.OS === 'android') {
+        ToastAndroid.show('New Course Added', ToastAndroid.SHORT);
+      }
+      navigation.goBack();
+    } finally {
+      // If the component unmounts after navigation.goBack, setting state is harmless.
+      setIsSubmitting(false);
     }
   };
 
@@ -381,11 +391,15 @@ const AddCard: React.FC = ({ navigation }: any) => {
             : registerName}
         </Text>
         <View style={styles.functionButtons}>
-          <TouchableOpacity onPress={handleClearCard} style={styles.clearCard}>
+          <TouchableOpacity onPress={handleClearCard} style={styles.clearCard} disabled={isSubmitting}>
             <Text style={styles.saveBtnTxt}>Clear</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={handleSubmit} style={styles.saveCard}>
-            <Text style={styles.saveBtnTxt}>Save</Text>
+          <TouchableOpacity
+            onPress={handleSubmit}
+            style={[styles.saveCard, isSubmitting ? styles.saveCardDisabled : null]}
+            disabled={isSubmitting}
+          >
+            <Text style={styles.saveBtnTxt}>{isSubmitting ? 'Saving...' : 'Save'}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -675,6 +689,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  saveCardDisabled: {
+    opacity: 0.6,
   },
   container: {
     flex: 1,
